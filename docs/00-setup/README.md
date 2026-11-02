@@ -1,6 +1,6 @@
 # Lesson 0 — Setup & Orientation
 
-**Slides:** _link added once the deck is created_
+**Slides:** https://docs.google.com/presentation/d/1z1c1ISkju2oIRF0f8jgvGLPVsPiZNzhZMMoLjcZkjhQ/edit
 
 ## Learning objectives
 

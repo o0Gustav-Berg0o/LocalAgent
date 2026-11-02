@@ -1,6 +1,6 @@
 # Lesson 7 — Prompt Injection & the Confirmed Write Tool
 
-**Slides:** _link added once the deck is created_
+**Slides:** https://docs.google.com/presentation/d/1IwjbpDvC03WPtBSfxDzNdke15jxyOSaeIF54T4EFDk8/edit
 
 ## Learning objectives
 

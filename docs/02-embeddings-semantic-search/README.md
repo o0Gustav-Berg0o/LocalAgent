@@ -1,6 +1,6 @@
 # Lesson 2 — Embeddings & Semantic Search
 
-**Slides:** _link added once the deck is created_
+**Slides:** https://docs.google.com/presentation/d/1N7eZ9RlSBQ8dxbpWRqbzDgH62hL3qeWp4BKqd26rACY/edit
 
 ## Learning objectives
 

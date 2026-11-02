@@ -1,6 +1,6 @@
 # Lesson 8 — Measuring Quality: an Eval Harness
 
-**Slides:** _link added once the deck is created_
+**Slides:** https://docs.google.com/presentation/d/1R4dREpngqfLWuMU7pCbGNuQRuK7Fy3PqktUiXuQPNGc/edit
 
 ## Learning objectives
 

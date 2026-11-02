@@ -1,6 +1,6 @@
 # Lesson 5 — Tool Design for Small Models
 
-**Slides:** _link added once the deck is created_
+**Slides:** https://docs.google.com/presentation/d/1pd9uKUXwhIbtT_x1WmG_aG1VROjN53CZmAJS4xItxAc/edit
 
 ## Learning objectives
 

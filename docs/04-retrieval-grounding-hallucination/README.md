@@ -1,6 +1,6 @@
 # Lesson 4 — Retrieval as a Tool, Grounding & Hallucination
 
-**Slides:** _link added once the deck is created_
+**Slides:** https://docs.google.com/presentation/d/18T9IUgAzD7bAIIlFFowX9aeWa-9VtHU8dYAnSO2FRF4/edit
 
 ## Learning objectives
 

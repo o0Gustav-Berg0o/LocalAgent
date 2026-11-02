@@ -1,6 +1,6 @@
 # Lesson 11 — Capstone & Retrospective
 
-**Slides:** _link added once the deck is created_
+**Slides:** https://docs.google.com/presentation/d/19oA5M3CZJCXjnQPNkIMrejFCi96P8kZpvub0mZLScnQ/edit
 
 ## Learning objectives
 

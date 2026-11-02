@@ -1,6 +1,6 @@
 # Lesson 1 — Agents, Tools & the Loop
 
-**Slides:** _link added once the deck is created_
+**Slides:** https://docs.google.com/presentation/d/1RER_wUZzuF7AGUdPhFTkM3h_ZMW7OUV9QINBiq9cy4Y/edit
 
 ## Learning objectives
 

@@ -1,6 +1,6 @@
 # Lesson 9 — Beyond Vectors: Hybrid Search
 
-**Slides:** _link added once the deck is created_
+**Slides:** https://docs.google.com/presentation/d/1rhVS5370y47nqosqlZYCjY_HiLzMB4oqYQjX-Gh0_Rg/edit
 
 ## Learning objectives
 

@@ -1,6 +1,6 @@
 # Lesson 3 — Chunking Strategies
 
-**Slides:** _link added once the deck is created_
+**Slides:** https://docs.google.com/presentation/d/1TAU4u_FTCMj1CStEA67WmSg__PJQaklQHJS_xc4fQbE/edit
 
 ## Learning objectives
 

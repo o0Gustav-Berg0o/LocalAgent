@@ -1,6 +1,6 @@
 # Lesson 6 — Context Window & Memory
 
-**Slides:** _link added once the deck is created_
+**Slides:** https://docs.google.com/presentation/d/1jL-P7t947eaSrwKhu5WI4c3xvkzcKPWPUfJkou77E7A/edit
 
 ## Learning objectives
 
