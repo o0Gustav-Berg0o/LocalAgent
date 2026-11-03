@@ -8,11 +8,11 @@ Both `llama-server` windows must still be running. All paths are relative to you
 
 **Do**
 
-1. **Add Markdig**, the markdown parser you'll use to find block boundaries:
+- [ ] **Add Markdig**, the markdown parser you'll use to find block boundaries:
    ```powershell
    dotnet add package Markdig
    ```
-2. **Create `Rag/MarkdownChunker.cs`.** The shape of the algorithm: parse the file into a `MarkdownDocument` with `Markdig.Markdown.Parse(text)`; walk its top-level blocks in order; whenever you hit a `HeadingBlock`, flush whatever's in your buffer as a chunk (with the heading path *before* this heading), then update the heading path (push this heading's text onto a stack, popping anything at the same or deeper level first); for every other block type, append its original text to a buffer, and if adding it would push the buffer past a `MaxChunkChars` limit (start with `2000`), flush the buffer as a chunk first, then start a new one with this block. Skip `YamlFrontMatterBlock` entirely. At the end, flush whatever's left in the buffer (skip it if it's empty — that's the "heading with no content" case).
+- [ ] **Create `Rag/MarkdownChunker.cs`.** The shape of the algorithm: parse the file into a `MarkdownDocument` with `Markdig.Markdown.Parse(text)`; walk its top-level blocks in order; whenever you hit a `HeadingBlock`, flush whatever's in your buffer as a chunk (with the heading path *before* this heading), then update the heading path (push this heading's text onto a stack, popping anything at the same or deeper level first); for every other block type, append its original text to a buffer, and if adding it would push the buffer past a `MaxChunkChars` limit (start with `2000`), flush the buffer as a chunk first, then start a new one with this block. Skip `YamlFrontMatterBlock` entirely. At the end, flush whatever's left in the buffer (skip it if it's empty — that's the "heading with no content" case).
    ```csharp
    namespace LocalAgent.Rag;
 
@@ -58,7 +58,7 @@ Both `llama-server` windows must still be running. All paths are relative to you
    }
    ```
    (Treat this as a starting skeleton, not a finished implementation — check the Markdig API docs for the exact block/span member names in the version you installed, and adjust.)
-3. **Add a `/chunks <file>` command** to `Program.cs`:
+- [ ] **Add a `/chunks <file>` command** to `Program.cs`:
    ```csharp
    if (input.StartsWith("/chunks "))
    {
@@ -70,7 +70,7 @@ Both `llama-server` windows must still be running. All paths are relative to you
        continue;
    }
    ```
-4. **Run `dotnet run`** and try `/chunks <one of your note filenames>.md`.
+- [ ] **Run `dotnet run`** and try `/chunks <one of your note filenames>.md`.
 
 **Observe**
 - Does any chunk cut a code block, list, or table in half? (It shouldn't — if it does, check your block-span handling.)
@@ -81,12 +81,12 @@ Both `llama-server` windows must still be running. All paths are relative to you
 
 **Do**
 
-1. **Update your Lesson 2 indexing loop** to chunk each file before embedding, instead of embedding the whole file as one chunk — embed `chunk.HeadingPath + "\n\n" + chunk.Text` for each chunk `MarkdownChunker.Chunk(...)` returns, and store the `HeadingPath` alongside the vector in your `VectorStore`.
-2. **Add a `/reindex` command** that re-runs this whole process (simplest version: just clear the store and redo everything; you can add the change-detection skip-logic back once this works).
-3. Run `/reindex`, then run a handful of `/search` queries against your notes and write down the top result's score for each.
-4. **Temporarily remove the prefix** — change the embedded text to just `chunk.Text`, with no heading path — and run `/reindex` again.
-5. Re-run the exact same `/search` queries.
-6. **Restore the prefix** and `/reindex` once more.
+- [ ] **Update your Lesson 2 indexing loop** to chunk each file before embedding, instead of embedding the whole file as one chunk — embed `chunk.HeadingPath + "\n\n" + chunk.Text` for each chunk `MarkdownChunker.Chunk(...)` returns, and store the `HeadingPath` alongside the vector in your `VectorStore`.
+- [ ] **Add a `/reindex` command** that re-runs this whole process (simplest version: just clear the store and redo everything; you can add the change-detection skip-logic back once this works).
+- [ ] Run `/reindex`, then run a handful of `/search` queries against your notes and write down the top result's score for each.
+- [ ] **Temporarily remove the prefix** — change the embedded text to just `chunk.Text`, with no heading path — and run `/reindex` again.
+- [ ] Re-run the exact same `/search` queries.
+- [ ] **Restore the prefix** and `/reindex` once more.
 
 **Observe**
 - How much did scores and rankings change without the prefix?
@@ -97,9 +97,9 @@ Both `llama-server` windows must still be running. All paths are relative to you
 
 **Do**
 
-1. Pick one of your longer notes. Set `maxChunkChars` to `300` in your `MarkdownChunker.Chunk` call, `/reindex`, and run `/chunks` on that note.
-2. Set it to `20000`, `/reindex`, and run `/chunks` again on the same note.
-3. Run the same `/search` queries from Exercise 2 at both extremes.
+- [ ] Pick one of your longer notes. Set `maxChunkChars` to `300` in your `MarkdownChunker.Chunk` call, `/reindex`, and run `/chunks` on that note.
+- [ ] Set it to `20000`, `/reindex`, and run `/chunks` again on the same note.
+- [ ] Run the same `/search` queries from Exercise 2 at both extremes.
 
 **Observe**
 - At the small extreme: does the content you're searching for get fragmented across multiple chunks?

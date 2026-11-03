@@ -8,14 +8,14 @@ Both `llama-server` windows must still be running. You're editing `Tools/NoteToo
 
 **Do**
 
-1. In `Tools/NoteTools.cs`, temporarily change the `[Description]` attributes on `SearchNotes`:
+- [ ] In `Tools/NoteTools.cs`, temporarily change the `[Description]` attributes on `SearchNotes`:
    ```csharp
    [Description("Search")]
    public async Task<string> SearchNotes(
        [Description("q")] string query)
    ```
    (Comment out or save a copy of the original text first — you'll restore it exactly in Exercise 2.)
-2. `dotnet run`, and ask three questions whose answers are clearly in your notes (reuse ones from Lesson 4 that worked reliably before this change).
+- [ ] `dotnet run`, and ask three questions whose answers are clearly in your notes (reuse ones from Lesson 4 that worked reliably before this change).
 
 **Observe**
 - Is the tool still called? With sensible arguments, or does the model hesitate, skip it, or call it with odd/invented arguments? Check the `[tool]` trace line for exactly what argument value it sent.
@@ -26,8 +26,8 @@ Both `llama-server` windows must still be running. You're editing `Tools/NoteToo
 
 **Do**
 
-1. **Restore the original, well-written description** on `SearchNotes` (from Lesson 4).
-2. **Add three more methods to `NoteTools.cs`** that all just call `SearchNotes` internally, with different names and overlapping-but-not-identical descriptions:
+- [ ] **Restore the original, well-written description** on `SearchNotes` (from Lesson 4).
+- [ ] **Add three more methods to `NoteTools.cs`** that all just call `SearchNotes` internally, with different names and overlapping-but-not-identical descriptions:
    ```csharp
    [Description("Find documents related to a topic in the user's files.")]
    public Task<string> FindDocuments(string topic) => SearchNotes(topic);
@@ -38,8 +38,8 @@ Both `llama-server` windows must still be running. You're editing `Tools/NoteToo
    [Description("Query the user's personal knowledge base for relevant content.")]
    public Task<string> QueryKnowledgeBase(string query) => SearchNotes(query);
    ```
-3. **Register all four** in `Program.cs`'s tool list (`AIFunctionFactory.Create(noteTools.FindDocuments)`, etc.) and `dotnet run`.
-4. Ask the same three questions from Exercise 1.
+- [ ] **Register all four** in `Program.cs`'s tool list (`AIFunctionFactory.Create(noteTools.FindDocuments)`, etc.) and `dotnet run`.
+- [ ] Ask the same three questions from Exercise 1.
 
 **Observe**
 - Which tool does the model actually pick, per the trace? Does it sometimes call more than one, or pick the "wrong" one?
@@ -50,9 +50,9 @@ Both `llama-server` windows must still be running. You're editing `Tools/NoteToo
 
 **Do**
 
-1. **Remove the three extra tools** you added in Exercise 2 from the tool list in `Program.cs` (keep the methods in the file if you want, just don't register them) — you're back to just `search_notes` with its good description.
-2. **In your `SystemPrompt` string** (in `AgentLoop.cs` or wherever you put it in Lesson 4), delete the sentence telling the model to call `search_notes` first.
-3. `dotnet run` and ask the same questions again.
+- [ ] **Remove the three extra tools** you added in Exercise 2 from the tool list in `Program.cs` (keep the methods in the file if you want, just don't register them) — you're back to just `search_notes` with its good description.
+- [ ] **In your `SystemPrompt` string** (in `AgentLoop.cs` or wherever you put it in Lesson 4), delete the sentence telling the model to call `search_notes` first.
+- [ ] `dotnet run` and ask the same questions again.
 
 **Observe**
 - Does the model skip searching more often now, even though `search_notes`'s own description is still good?

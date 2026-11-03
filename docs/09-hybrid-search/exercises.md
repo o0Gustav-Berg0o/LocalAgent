@@ -8,15 +8,15 @@ Both `llama-server` windows must still be running. All paths are relative to you
 
 **Do**
 
-1. **Add a note with a specific identifier**, e.g. `samples/notes/esp32-wifi.md`:
+- [ ] **Add a note with a specific identifier**, e.g. `samples/notes/esp32-wifi.md`:
    ```markdown
    # ESP32 WiFi
 
    When the device loses its connection, the system fires `WIFI_EVENT_STA_DISCONNECTED`.
    Handle it by calling `esp_wifi_connect()` again after a short backoff.
    ```
-2. `/reindex`, then `/search WIFI_EVENT_STA_DISCONNECTED`.
-3. **Add 2–3 questions using this identifier** to `eval/questions.json` from Lesson 8, with `esp32-wifi.md` as the expected source.
+- [ ] `/reindex`, then `/search WIFI_EVENT_STA_DISCONNECTED`.
+- [ ] **Add 2–3 questions using this identifier** to `eval/questions.json` from Lesson 8, with `esp32-wifi.md` as the expected source.
 
 **Observe**
 - Does vector search rank the chunk containing the exact identifier where you'd expect, or does a topically-similar-but-wrong chunk (if you have one) outrank it? Look at the actual scores from `/search`, not just the top result.
@@ -27,7 +27,7 @@ Both `llama-server` windows must still be running. All paths are relative to you
 
 **Do**
 
-1. **Add a BM25 scorer.** Create `Rag/Bm25.cs` — this needs the term frequency of each query word in each chunk, and how rare that word is across all chunks (inverse document frequency). A minimal version:
+- [ ] **Add a BM25 scorer.** Create `Rag/Bm25.cs` — this needs the term frequency of each query word in each chunk, and how rare that word is across all chunks (inverse document frequency). A minimal version:
    ```csharp
    namespace LocalAgent.Rag;
 
@@ -65,8 +65,8 @@ Both `llama-server` windows must still be running. All paths are relative to you
                StringSplitOptions.RemoveEmptyEntries).ToList();
    }
    ```
-2. **Add a `/search-bm25 <query>` command** to `Program.cs`, scoring over `store.All.Select(c => c.Text).ToList()` and printing the top results the same way `/search` does, with source file and score.
-3. `dotnet run`, `/reindex`, then run the identifier query from Exercise 1 through `/search-bm25` and compare its ranking to plain `/search`.
+- [ ] **Add a `/search-bm25 <query>` command** to `Program.cs`, scoring over `store.All.Select(c => c.Text).ToList()` and printing the top results the same way `/search` does, with source file and score.
+- [ ] `dotnet run`, `/reindex`, then run the identifier query from Exercise 1 through `/search-bm25` and compare its ranking to plain `/search`.
 
 ## Exercise 3 — Merge with RRF
 
@@ -74,7 +74,7 @@ Both `llama-server` windows must still be running. All paths are relative to you
 
 **Do**
 
-1. **Implement RRF** in `Rag/VectorStore.cs` or a new `Rag/HybridSearch.cs`: get both rankings (vector `TopK` over the full set, and `Bm25.Score`), then for each chunk sum `1 / (k + rank)` across whichever list(s) it appears in (`k = 60`, ranks 1-based):
+- [ ] **Implement RRF** in `Rag/VectorStore.cs` or a new `Rag/HybridSearch.cs`: get both rankings (vector `TopK` over the full set, and `Bm25.Score`), then for each chunk sum `1 / (k + rank)` across whichever list(s) it appears in (`k = 60`, ranks 1-based):
    ```csharp
    public static List<(int Index, double RrfScore)> Fuse(
        List<int> vectorRanking, List<int> bm25Ranking, int k = 60)
@@ -93,9 +93,9 @@ Both `llama-server` windows must still be running. All paths are relative to you
        return scores.OrderByDescending(kv => kv.Value).Select(kv => (kv.Key, kv.Value)).ToList();
    }
    ```
-2. **Add a `/search-hybrid <query>` command** that runs both rankings over `store.All`, fuses them, and prints the top results — keep `/search` and `/search-bm25` working too, so you can compare all three side by side.
-3. **Point your `SearchNotes` tool and `/eval` harness at the hybrid ranking** instead of vector-only (or add a flag to switch between them, so you can run `/eval` both ways without changing code each time).
-4. Run `/eval` once with vector-only, once with hybrid.
+- [ ] **Add a `/search-hybrid <query>` command** that runs both rankings over `store.All`, fuses them, and prints the top results — keep `/search` and `/search-bm25` working too, so you can compare all three side by side.
+- [ ] **Point your `SearchNotes` tool and `/eval` harness at the hybrid ranking** instead of vector-only (or add a flag to switch between them, so you can run `/eval` both ways without changing code each time).
+- [ ] Run `/eval` once with vector-only, once with hybrid.
 
 **Observe**
 - What's the recall@k delta overall, and specifically on the identifier-based questions you added in Exercise 1?

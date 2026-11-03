@@ -8,7 +8,7 @@ Both `llama-server` windows must still be running. All paths are relative to you
 
 **Do**
 
-1. **Create `eval/questions.json`** (create the `eval` folder). Write 15 entries, each with a question and the filename(s) that should answer it:
+- [ ] **Create `eval/questions.json`** (create the `eval` folder). Write 15 entries, each with a question and the filename(s) that should answer it:
    ```json
    [
      { "question": "When should I plant tomatoes?", "expectedSources": ["garden-notes.md"] },
@@ -16,7 +16,7 @@ Both `llama-server` windows must still be running. All paths are relative to you
      { "question": "How do I configure Rust's borrow checker?", "expectedSources": [] }
    ]
    ```
-2. Include a mix: some easy (near-exact wording from a note), some paraphrased, some that need two notes combined, and 2–3 with an empty `expectedSources` array — topics genuinely absent from your notes.
+- [ ] Include a mix: some easy (near-exact wording from a note), some paraphrased, some that need two notes combined, and 2–3 with an empty `expectedSources` array — topics genuinely absent from your notes.
 
 ## Exercise 2 — Build the recall@k harness
 
@@ -24,7 +24,7 @@ Both `llama-server` windows must still be running. All paths are relative to you
 
 **Do**
 
-1. **Add an `/eval` command** to `Program.cs` that reads `eval/questions.json`, runs each question through your embedding + `VectorStore.TopK` path directly (the same code `search_notes` uses — not through the agent loop), and checks whether any `expectedSources` filename appears among the top-`k` chunk sources:
+- [ ] **Add an `/eval` command** to `Program.cs` that reads `eval/questions.json`, runs each question through your embedding + `VectorStore.TopK` path directly (the same code `search_notes` uses — not through the agent loop), and checks whether any `expectedSources` filename appears among the top-`k` chunk sources:
    ```csharp
    if (input.Trim() == "/eval")
    {
@@ -51,7 +51,7 @@ Both `llama-server` windows must still be running. All paths are relative to you
 
    record EvalQuestion(string Question, List<string> ExpectedSources);
    ```
-2. `dotnet run`, type `/eval`, and check the per-question PASS/FAIL output against what you expect by eye.
+- [ ] `dotnet run`, type `/eval`, and check the per-question PASS/FAIL output against what you expect by eye.
 
 ## Exercise 3 — Use it to make a real decision
 
@@ -59,10 +59,10 @@ Both `llama-server` windows must still be running. All paths are relative to you
 
 **Do**
 
-1. Run `/eval` at your current settings and write down the recall@6 percentage.
-2. **Change exactly one thing** — e.g. set `MaxChunkChars` to `500` in your `MarkdownChunker.Chunk` call — `/reindex`, then run `/eval` again.
-3. Write down the new recall@6 and the actual delta (not "it seemed better" — the number).
-4. Repeat for at least one more change: try `k: 4` instead of `6` in `/eval`'s `TopK` call, or temporarily strip the heading-path prefix from indexing like you did in Lesson 3's Exercise 2, `/reindex`, and re-run `/eval`.
+- [ ] Run `/eval` at your current settings and write down the recall@6 percentage.
+- [ ] **Change exactly one thing** — e.g. set `MaxChunkChars` to `500` in your `MarkdownChunker.Chunk` call — `/reindex`, then run `/eval` again.
+- [ ] Write down the new recall@6 and the actual delta (not "it seemed better" — the number).
+- [ ] Repeat for at least one more change: try `k: 4` instead of `6` in `/eval`'s `TopK` call, or temporarily strip the heading-path prefix from indexing like you did in Lesson 3's Exercise 2, `/reindex`, and re-run `/eval`.
 
 **Observe**
 - Did your Lesson 3 intuition about chunk size match what the harness actually measured? Where did intuition and measurement disagree, if anywhere?

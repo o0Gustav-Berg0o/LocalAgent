@@ -8,11 +8,11 @@ All file paths below are relative to your `LocalAgent` project root (the folder 
 
 **Do**
 
-1. **Add the function-calling package**, which gives you `AIFunctionFactory` to turn a plain C# method into a tool the model can call:
+- [ ] **Add the function-calling package**, which gives you `AIFunctionFactory` to turn a plain C# method into a tool the model can call:
    ```powershell
    dotnet add package Microsoft.Extensions.AI.Abstractions
    ```
-2. **Create a new file `Tools/UtilityTools.cs`** (create the `Tools` folder if it doesn't exist) with two methods:
+- [ ] **Create a new file `Tools/UtilityTools.cs`** (create the `Tools` folder if it doesn't exist) with two methods:
    ```csharp
    using System.ComponentModel;
 
@@ -42,7 +42,7 @@ All file paths below are relative to your `LocalAgent` project root (the folder 
    }
    ```
    Notice the `[Description]` on `Calculate` itself says *when* to use it ("instead of computing it yourself"), not just what it does — that phrasing matters more than it looks like it should; Lesson 5 is entirely about why.
-3. **Turn the methods into tools** in `Program.cs`, right where you build your chat client:
+- [ ] **Turn the methods into tools** in `Program.cs`, right where you build your chat client:
    ```csharp
    using Microsoft.Extensions.AI;
    using LocalAgent.Tools;
@@ -53,7 +53,7 @@ All file paths below are relative to your `LocalAgent` project root (the folder 
        AIFunctionFactory.Create(UtilityTools.Calculate),
    ];
    ```
-4. **Print the generated schema** before you do anything else with it, just to see what the model actually receives:
+- [ ] **Print the generated schema** before you do anything else with it, just to see what the model actually receives:
    ```csharp
    foreach (var tool in tools)
        Console.WriteLine(tool.JsonSchema);
@@ -69,7 +69,7 @@ All file paths below are relative to your `LocalAgent` project root (the folder 
 
 **Do**
 
-1. **Create `Agent/AgentLoop.cs`** (create the `Agent` folder if needed) with a class that holds the conversation history and runs the loop:
+- [ ] **Create `Agent/AgentLoop.cs`** (create the `Agent` folder if needed) with a class that holds the conversation history and runs the loop:
    ```csharp
    using Microsoft.Extensions.AI;
 
@@ -128,7 +128,7 @@ All file paths below are relative to your `LocalAgent` project root (the folder 
    }
    ```
    (Exact method names on `IChatClient`/`AIFunction` can differ slightly between `Microsoft.Extensions.AI` prerelease versions — if something doesn't compile, check IntelliSense on `client.` and `tool.` for the closest equivalent; the shape of the loop stays the same either way.)
-2. **Wire it up in `Program.cs`**, replacing your Lesson 0 one-shot call:
+- [ ] **Wire it up in `Program.cs`**, replacing your Lesson 0 one-shot call:
    ```csharp
    var loop = new AgentLoop(chatClient, tools);
 
@@ -142,7 +142,7 @@ All file paths below are relative to your `LocalAgent` project root (the folder 
        Console.WriteLine($"Agent> {answer}");
    }
    ```
-3. **Run it**: `dotnet run` from the project root, then try the questions in Observe below.
+- [ ] **Run it**: `dotnet run` from the project root, then try the questions in Observe below.
 
 **Observe**
 - Ask: *"What's today's date, and what is 17 * 23?"* — watch the `[llm]` and `[tool]` trace lines. How many model calls did it take? Why more than one?

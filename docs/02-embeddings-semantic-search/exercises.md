@@ -8,8 +8,8 @@ Both `llama-server` windows from Lesson 0 must still be running. All file paths 
 
 **Do**
 
-1. **Create a notes folder.** Inside your project root, create `samples/notes/` and write 5–10 short `.md` files about a topic you know well (so you can judge relevance yourself) — e.g. one file per subtopic, a few paragraphs each. You'll keep adding to this folder throughout the course.
-2. **Add an embedding client.** In `Program.cs`, build a second client alongside your chat client, pointed at port 8081:
+- [ ] **Create a notes folder.** Inside your project root, create `samples/notes/` and write 5–10 short `.md` files about a topic you know well (so you can judge relevance yourself) — e.g. one file per subtopic, a few paragraphs each. You'll keep adding to this folder throughout the course.
+- [ ] **Add an embedding client.** In `Program.cs`, build a second client alongside your chat client, pointed at port 8081:
    ```csharp
    using Microsoft.Extensions.AI;
    using OpenAI;
@@ -21,13 +21,13 @@ Both `llama-server` windows from Lesson 0 must still be running. All file paths 
        .GetEmbeddingClient("qwen3-embedding-0.6b")
        .AsIEmbeddingGenerator();
    ```
-3. **Create `Rag/Chunk.cs`** to hold one embedded piece of text:
+- [ ] **Create `Rag/Chunk.cs`** to hold one embedded piece of text:
    ```csharp
    namespace LocalAgent.Rag;
 
    public record Chunk(string SourceFile, string Text, float[] Vector);
    ```
-4. **Create `Rag/VectorStore.cs`** with an in-memory list and a `TopK` method using cosine similarity (`System.Numerics.Tensors.TensorPrimitives.CosineSimilarity` does this for you if you add `<PackageReference Include="System.Numerics.Tensors" />` to your `.csproj`):
+- [ ] **Create `Rag/VectorStore.cs`** with an in-memory list and a `TopK` method using cosine similarity (`System.Numerics.Tensors.TensorPrimitives.CosineSimilarity` does this for you if you add `<PackageReference Include="System.Numerics.Tensors" />` to your `.csproj`):
    ```csharp
    using System.Numerics.Tensors;
 
@@ -49,7 +49,7 @@ Both `llama-server` windows from Lesson 0 must still be running. All file paths 
        public IReadOnlyList<Chunk> All => _chunks;
    }
    ```
-5. **Index the notes folder at startup**, reading every `.md` file under `samples/notes/` and embedding its full contents as one chunk (don't split yet — that's Lesson 3):
+- [ ] **Index the notes folder at startup**, reading every `.md` file under `samples/notes/` and embedding its full contents as one chunk (don't split yet — that's Lesson 3):
    ```csharp
    var store = new VectorStore();
    foreach (var path in Directory.GetFiles("samples/notes", "*.md", SearchOption.AllDirectories))
@@ -59,7 +59,7 @@ Both `llama-server` windows from Lesson 0 must still be running. All file paths 
        store.Add(new Chunk(Path.GetFileName(path), text, embedding.ToArray()));
    }
    ```
-6. **Add JSON persistence.** Serialize `store.All` to `index.json` after indexing, and on startup, check each note file's content hash against what's stored; only re-embed files that are new or changed. (`System.Security.Cryptography.SHA256` over the file bytes gives you a hash; store it alongside each chunk in the JSON, keyed by source file.) You don't need this working perfectly yet — getting the skip-unchanged-files logic right is itself worth sitting with for a bit.
+- [ ] **Add JSON persistence.** Serialize `store.All` to `index.json` after indexing, and on startup, check each note file's content hash against what's stored; only re-embed files that are new or changed. (`System.Security.Cryptography.SHA256` over the file bytes gives you a hash; store it alongside each chunk in the JSON, keyed by source file.) You don't need this working perfectly yet — getting the skip-unchanged-files logic right is itself worth sitting with for a bit.
 
 ## Exercise 2 — `/search` as a standalone command
 
@@ -67,7 +67,7 @@ Both `llama-server` windows from Lesson 0 must still be running. All file paths 
 
 **Do**
 
-1. **Add a `/search <text>` command** to your `Program.cs` input loop (check for it before passing input to the agent loop):
+- [ ] **Add a `/search <text>` command** to your `Program.cs` input loop (check for it before passing input to the agent loop):
    ```csharp
    if (input.StartsWith("/search "))
    {
@@ -78,7 +78,7 @@ Both `llama-server` windows from Lesson 0 must still be running. All file paths 
        continue;
    }
    ```
-2. **Run `dotnet run`**, then:
+- [ ] **Run `dotnet run`**, then:
    - `/search` using the exact wording from one of your notes.
    - `/search` again with a paraphrase — different words, same meaning.
    - `/search` with something totally unrelated to anything in your notes.
