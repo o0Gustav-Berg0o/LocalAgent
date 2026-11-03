@@ -5,7 +5,7 @@
 **Goal:** prove the whole system works together, not just lesson-by-lesson in isolation.
 
 **Do**
-1. Start from a freshly reindexed notes folder.
+1. Start from a freshly reindexed notes folder: delete `index.json` from your project root (or run `/reindex full` if you built that command) so nothing is loaded from a stale cache, then `dotnet run`.
 2. Run through, in one session, in this order:
    - A question clearly answerable from your notes (check: searched, grounded, cited).
    - A question with no answer in your notes (check: explicit "I don't know," not a guess).

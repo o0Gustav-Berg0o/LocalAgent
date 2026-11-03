@@ -1,36 +1,71 @@
 # Lesson 8 — Exercises
 
+Both `llama-server` windows must still be running. All paths are relative to your project root.
+
 ## Exercise 1 — Write a labeled test set
 
 **Goal:** fixed ground truth to measure against.
 
 **Do**
-1. Write 15 questions about your own notes, each with the filename(s) that should answer it.
-2. Include a mix: some easy (exact-wording matches), some paraphrased, some that require combining two notes, and 2–3 that have **no** correct answer in your notes at all (expected result: nothing relevant).
-3. Store this as a simple structured file (JSON or CSV): `question, expectedSources[]`.
+
+1. **Create `eval/questions.json`** (create the `eval` folder). Write 15 entries, each with a question and the filename(s) that should answer it:
+   ```json
+   [
+     { "question": "When should I plant tomatoes?", "expectedSources": ["garden-notes.md"] },
+     { "question": "What's the ideal soil pH for tomatoes?", "expectedSources": ["garden-notes.md"] },
+     { "question": "How do I configure Rust's borrow checker?", "expectedSources": [] }
+   ]
+   ```
+2. Include a mix: some easy (near-exact wording from a note), some paraphrased, some that need two notes combined, and 2–3 with an empty `expectedSources` array — topics genuinely absent from your notes.
 
 ## Exercise 2 — Build the recall@k harness
 
-**Goal:** an automated, repeatable score.
+**Goal:** an automated, repeatable score, with no chat model involved.
 
 **Do**
-1. Write a command/script that, for each test question, calls your search function directly (bypassing the chat model entirely) at a chosen `k`.
-2. For each question, check whether any of its `expectedSources` appears among the top-k results' source files.
-3. Report per-question pass/fail and an overall recall@k percentage.
-4. Handle the "no correct answer exists" questions correctly: for those, "passing" means nothing scored above your `MinScore` threshold, not that some filename matched.
+
+1. **Add an `/eval` command** to `Program.cs` that reads `eval/questions.json`, runs each question through your embedding + `VectorStore.TopK` path directly (the same code `search_notes` uses — not through the agent loop), and checks whether any `expectedSources` filename appears among the top-`k` chunk sources:
+   ```csharp
+   if (input.Trim() == "/eval")
+   {
+       var json = await File.ReadAllTextAsync("eval/questions.json");
+       var questions = System.Text.Json.JsonSerializer.Deserialize<List<EvalQuestion>>(json)!;
+       int passed = 0;
+
+       foreach (var q in questions)
+       {
+           var queryVector = (await embeddingGenerator.GenerateVectorAsync($"Instruct: Given a question, retrieve relevant passages\nQuery:{q.Question}")).ToArray();
+           var hits = store.TopK(queryVector, k: 6).Where(h => h.Score >= 0.3f).ToList();
+           var foundSources = hits.Select(h => h.Chunk.SourceFile).ToHashSet();
+
+           bool ok = q.ExpectedSources.Count == 0
+               ? hits.Count == 0
+               : q.ExpectedSources.Any(foundSources.Contains);
+
+           Console.WriteLine($"{(ok ? "PASS" : "FAIL")}  {q.Question}");
+           if (ok) passed++;
+       }
+       Console.WriteLine($"\nrecall@6: {passed}/{questions.Count} = {100.0 * passed / questions.Count:F0}%");
+       continue;
+   }
+
+   record EvalQuestion(string Question, List<string> ExpectedSources);
+   ```
+2. `dotnet run`, type `/eval`, and check the per-question PASS/FAIL output against what you expect by eye.
 
 ## Exercise 3 — Use it to make a real decision
 
 **Goal:** replace intuition with a measured comparison.
 
 **Do**
-1. Run the harness at your current settings and record recall@k.
-2. Change exactly one thing — chunk size, `TopK`, whether the heading-path prefix is included, or whether the query instruction is applied — reindex, and run the harness again.
-3. Record the new recall@k and the actual change.
-4. Repeat for at least one more parameter change.
+
+1. Run `/eval` at your current settings and write down the recall@6 percentage.
+2. **Change exactly one thing** — e.g. set `MaxChunkChars` to `500` in your `MarkdownChunker.Chunk` call — `/reindex`, then run `/eval` again.
+3. Write down the new recall@6 and the actual delta (not "it seemed better" — the number).
+4. Repeat for at least one more change: try `k: 4` instead of `6` in `/eval`'s `TopK` call, or temporarily strip the heading-path prefix from indexing like you did in Lesson 3's Exercise 2, `/reindex`, and re-run `/eval`.
 
 **Observe**
-- Did your Lesson 3 intuition about chunk size match what the harness measured? Where did intuition and measurement disagree, if anywhere?
+- Did your Lesson 3 intuition about chunk size match what the harness actually measured? Where did intuition and measurement disagree, if anywhere?
 
 **Discuss**
 - Why is a 15-question eval set a meaningful (if small) improvement over "I tried a few queries and it seemed fine," even though 15 is a tiny sample?

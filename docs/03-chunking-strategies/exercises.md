@@ -1,25 +1,92 @@
 # Lesson 3 — Exercises
 
+Both `llama-server` windows must still be running. All paths are relative to your project root.
+
 ## Exercise 1 — Structure-aware chunker
 
 **Goal:** split documents without ever cutting a block in half.
 
 **Do**
-1. Parse your notes into blocks using a markdown parser (e.g. Markdig for .NET).
-2. Track a running "heading path" as headings are encountered (reset the buffer, update the path, continue).
-3. Accumulate non-heading blocks into a buffer; when adding the next block would exceed a `MaxChunkChars` budget, flush the buffer as one chunk first.
-4. Skip YAML frontmatter. A heading with no content under it produces no chunk.
-5. Add a `/chunks <file>` command printing each resulting chunk with its heading path.
 
-## Exercise 2 — Prove the heading-path prefix matters
+1. **Add Markdig**, the markdown parser you'll use to find block boundaries:
+   ```powershell
+   dotnet add package Markdig
+   ```
+2. **Create `Rag/MarkdownChunker.cs`.** The shape of the algorithm: parse the file into a `MarkdownDocument` with `Markdig.Markdown.Parse(text)`; walk its top-level blocks in order; whenever you hit a `HeadingBlock`, flush whatever's in your buffer as a chunk (with the heading path *before* this heading), then update the heading path (push this heading's text onto a stack, popping anything at the same or deeper level first); for every other block type, append its original text to a buffer, and if adding it would push the buffer past a `MaxChunkChars` limit (start with `2000`), flush the buffer as a chunk first, then start a new one with this block. Skip `YamlFrontMatterBlock` entirely. At the end, flush whatever's left in the buffer (skip it if it's empty — that's the "heading with no content" case).
+   ```csharp
+   namespace LocalAgent.Rag;
+
+   public record Chunk2(string HeadingPath, string Text); // rename/merge with your Lesson 2 Chunk once it also carries a vector
+
+   public static class MarkdownChunker
+   {
+       public static List<Chunk2> Chunk(string fileName, string text, int maxChunkChars = 2000)
+       {
+           var document = Markdig.Markdown.Parse(text);
+           var chunks = new List<Chunk2>();
+           var headingStack = new List<(int Level, string Text)>();
+           var buffer = new System.Text.StringBuilder();
+
+           void Flush()
+           {
+               if (buffer.Length == 0) return;
+               var path = string.Join(" > ", new[] { fileName }.Concat(headingStack.Select(h => h.Text)));
+               chunks.Add(new Chunk2(path, buffer.ToString().Trim()));
+               buffer.Clear();
+           }
+
+           foreach (var block in document)
+           {
+               if (block is Markdig.Extensions.Yaml.YamlFrontMatterBlock) continue;
+
+               if (block is Markdig.Syntax.HeadingBlock heading)
+               {
+                   Flush();
+                   headingStack.RemoveAll(h => h.Level >= heading.Level);
+                   var headingText = text[heading.Span.Start..(heading.Span.End + 1)].TrimStart('#', ' ');
+                   headingStack.Add((heading.Level, headingText));
+                   continue;
+               }
+
+               var blockText = text[block.Span.Start..(block.Span.End + 1)];
+               if (buffer.Length + blockText.Length > maxChunkChars) Flush();
+               buffer.AppendLine(blockText);
+           }
+           Flush();
+           return chunks;
+       }
+   }
+   ```
+   (Treat this as a starting skeleton, not a finished implementation — check the Markdig API docs for the exact block/span member names in the version you installed, and adjust.)
+3. **Add a `/chunks <file>` command** to `Program.cs`:
+   ```csharp
+   if (input.StartsWith("/chunks "))
+   {
+       var fileName = input["/chunks ".Length..].Trim();
+       var path = Path.Combine("samples/notes", fileName);
+       var text = await File.ReadAllTextAsync(path);
+       foreach (var chunk in LocalAgent.Rag.MarkdownChunker.Chunk(fileName, text))
+           Console.WriteLine($"[{chunk.HeadingPath}]\n{chunk.Text}\n---");
+       continue;
+   }
+   ```
+4. **Run `dotnet run`** and try `/chunks <one of your note filenames>.md`.
+
+**Observe**
+- Does any chunk cut a code block, list, or table in half? (It shouldn't — if it does, check your block-span handling.)
+
+## Exercise 2 — Wire chunking into indexing, and prove the heading-path prefix matters
 
 **Goal:** measure, not assume, the effect of including document structure in the embedded text.
 
 **Do**
-1. Run a handful of `/search` queries against your notes and note the top result's score for each.
-2. Temporarily embed chunks as *just the raw text*, without the heading-path prefix. Re-index.
-3. Re-run the same `/search` queries.
-4. Restore the heading-path prefix and re-index again.
+
+1. **Update your Lesson 2 indexing loop** to chunk each file before embedding, instead of embedding the whole file as one chunk — embed `chunk.HeadingPath + "\n\n" + chunk.Text` for each chunk `MarkdownChunker.Chunk(...)` returns, and store the `HeadingPath` alongside the vector in your `VectorStore`.
+2. **Add a `/reindex` command** that re-runs this whole process (simplest version: just clear the store and redo everything; you can add the change-detection skip-logic back once this works).
+3. Run `/reindex`, then run a handful of `/search` queries against your notes and write down the top result's score for each.
+4. **Temporarily remove the prefix** — change the embedded text to just `chunk.Text`, with no heading path — and run `/reindex` again.
+5. Re-run the exact same `/search` queries.
+6. **Restore the prefix** and `/reindex` once more.
 
 **Observe**
 - How much did scores and rankings change without the prefix?
@@ -29,13 +96,14 @@
 **Goal:** feel the tradeoff between too-small and too-large chunks.
 
 **Do**
-1. Set `MaxChunkChars` very small (e.g. 300), reindex, and inspect `/chunks` on a longer note.
-2. Set it very large (e.g. 20000), reindex, and inspect again.
-3. Run the same `/search` queries at both extremes.
+
+1. Pick one of your longer notes. Set `maxChunkChars` to `300` in your `MarkdownChunker.Chunk` call, `/reindex`, and run `/chunks` on that note.
+2. Set it to `20000`, `/reindex`, and run `/chunks` again on the same note.
+3. Run the same `/search` queries from Exercise 2 at both extremes.
 
 **Observe**
-- At the small extreme: does context get fragmented across multiple chunks?
-- At the large extreme: do scores become "fuzzy" — high for many unrelated queries because each chunk covers too much ground?
+- At the small extreme: does the content you're searching for get fragmented across multiple chunks?
+- At the large extreme: do scores become "fuzzy" — high for many unrelated queries because each chunk now covers too much ground?
 
 **Discuss**
 - Why split only *between* blocks rather than at a fixed character count?
