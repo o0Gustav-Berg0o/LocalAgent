@@ -51,7 +51,7 @@ Both `llama-server` windows must still be running. You're editing `Tools/NoteToo
 **Do**
 
 - [ ] **Remove the three extra tools** you added in Exercise 2 from the tool list in `Program.cs` (keep the methods in the file if you want, just don't register them) — you're back to just `search_notes` with its good description.
-- [ ] **In your `SystemPrompt` string** (in `AgentLoop.cs` or wherever you put it in Lesson 4), delete the sentence telling the model to call `search_notes` first.
+- [ ] **In your `SystemPrompt` field in `AgentLoop.cs`** (added in Lesson 4), delete the sentence telling the model to call `search_notes` first.
 - [ ] `dotnet run` and ask the same questions again.
 
 **Observe**

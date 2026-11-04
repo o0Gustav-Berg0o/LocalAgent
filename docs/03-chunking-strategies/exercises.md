@@ -58,7 +58,7 @@ Both `llama-server` windows must still be running. All paths are relative to you
    }
    ```
    (Treat this as a starting skeleton, not a finished implementation — check the Markdig API docs for the exact block/span member names in the version you installed, and adjust.)
-- [ ] **Add a `/chunks <file>` command** to `Program.cs`:
+- [ ] **Add a `/chunks <file>` command** to `Program.cs`. Placement: inside your `while (true)` input loop, alongside your existing `/search` check from Lesson 2 (either `if`/`else if` branch — order between the two doesn't matter, since each checks for its own distinct prefix), still before the line that calls `loop.AskAsync(input)`:
    ```csharp
    if (input.StartsWith("/chunks "))
    {
@@ -81,7 +81,7 @@ Both `llama-server` windows must still be running. All paths are relative to you
 
 **Do**
 
-- [ ] **Update your Lesson 2 indexing loop** to chunk each file before embedding, instead of embedding the whole file as one chunk — embed `chunk.HeadingPath + "\n\n" + chunk.Text` for each chunk `MarkdownChunker.Chunk(...)` returns, and store the `HeadingPath` alongside the vector in your `VectorStore`.
+- [ ] **Update your Lesson 2 indexing loop** to chunk each file before embedding, instead of embedding the whole file as one chunk — embed `chunk.HeadingPath + "\n\n" + chunk.Text` for each chunk `MarkdownChunker.Chunk(...)` returns, and store the `HeadingPath` alongside the vector in your `VectorStore`. Placement: this is an in-place rewrite of the body of the `foreach` loop you wrote in Lesson 2 Exercise 1 (the one that currently does one `GenerateVectorAsync` + one `store.Add` per file) — you're changing what happens inside that loop, not adding a second loop next to it.
 - [ ] **Add a `/reindex` command** that re-runs this whole process (simplest version: just clear the store and redo everything; you can add the change-detection skip-logic back once this works).
 - [ ] Run `/reindex`, then run a handful of `/search` queries against your notes and write down the top result's score for each.
 - [ ] **Temporarily remove the prefix** — change the embedded text to just `chunk.Text`, with no heading path — and run `/reindex` again.

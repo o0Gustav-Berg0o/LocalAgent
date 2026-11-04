@@ -42,7 +42,7 @@ All file paths below are relative to your `LocalAgent` project root (the folder 
    }
    ```
    Notice the `[Description]` on `Calculate` itself says *when* to use it ("instead of computing it yourself"), not just what it does — that phrasing matters more than it looks like it should; Lesson 5 is entirely about why.
-- [ ] **Turn the methods into tools** in `Program.cs`, right where you build your chat client:
+- [ ] **Turn the methods into tools** in `Program.cs`. Placement: right after you build your `chatClient` (from Lesson 0 Exercise 4) and before the one-shot `client.GetResponseAsync("Hello")` call you wrote there — you'll replace that one-shot call entirely in Exercise 2, but for now the `tools` array just needs to exist before anything tries to use it:
    ```csharp
    using Microsoft.Extensions.AI;
    using LocalAgent.Tools;
@@ -53,7 +53,7 @@ All file paths below are relative to your `LocalAgent` project root (the folder 
        AIFunctionFactory.Create(UtilityTools.Calculate),
    ];
    ```
-- [ ] **Print the generated schema** before you do anything else with it, just to see what the model actually receives:
+- [ ] **Print the generated schema** before you do anything else with it, just to see what the model actually receives. Placement: directly below the `tools` declaration you just added, still before the old one-shot call:
    ```csharp
    foreach (var tool in tools)
        Console.WriteLine(tool.JsonSchema);

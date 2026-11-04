@@ -65,7 +65,7 @@ Both `llama-server` windows must still be running. All paths are relative to you
                StringSplitOptions.RemoveEmptyEntries).ToList();
    }
    ```
-- [ ] **Add a `/search-bm25 <query>` command** to `Program.cs`, scoring over `store.All.Select(c => c.Text).ToList()` and printing the top results the same way `/search` does, with source file and score.
+- [ ] **Add a `/search-bm25 <query>` command** to `Program.cs`, scoring over `store.All.Select(c => c.Text).ToList()` and printing the top results the same way `/search` does, with source file and score. Placement: inside your `while (true)` input loop, alongside your other slash-command checks (`/search`, `/chunks`, `/reindex`, `/eval`), still before `loop.AskAsync(input)`.
 - [ ] `dotnet run`, `/reindex`, then run the identifier query from Exercise 1 through `/search-bm25` and compare its ranking to plain `/search`.
 
 ## Exercise 3 — Merge with RRF
@@ -93,8 +93,8 @@ Both `llama-server` windows must still be running. All paths are relative to you
        return scores.OrderByDescending(kv => kv.Value).Select(kv => (kv.Key, kv.Value)).ToList();
    }
    ```
-- [ ] **Add a `/search-hybrid <query>` command** that runs both rankings over `store.All`, fuses them, and prints the top results — keep `/search` and `/search-bm25` working too, so you can compare all three side by side.
-- [ ] **Point your `SearchNotes` tool and `/eval` harness at the hybrid ranking** instead of vector-only (or add a flag to switch between them, so you can run `/eval` both ways without changing code each time).
+- [ ] **Add a `/search-hybrid <query>` command** that runs both rankings over `store.All`, fuses them, and prints the top results — keep `/search` and `/search-bm25` working too, so you can compare all three side by side. Same placement as the other slash commands: inside the `while (true)` loop, before `loop.AskAsync(input)`.
+- [ ] **Point your `SearchNotes` tool and `/eval` harness at the hybrid ranking** instead of vector-only (or add a flag to switch between them, so you can run `/eval` both ways without changing code each time). Placement: in `Tools/NoteTools.cs`, this replaces the `var hits = store.TopK(queryVector, k: 6);` line inside `SearchNotes` with a call that also runs BM25 and fuses the two rankings; in `Program.cs`, the equivalent replacement goes inside your `/eval` command, at the same `store.TopK(...)` call.
 - [ ] Run `/eval` once with vector-only, once with hybrid.
 
 **Observe**

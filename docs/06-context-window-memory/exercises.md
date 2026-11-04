@@ -25,7 +25,7 @@ You'll be restarting the chat-model `llama-server` window (not the embedding one
 **Do**
 
 - [ ] Confirm your chat server is back on `-c 32768` (restart it if you didn't already).
-- [ ] **Add a rough token estimate to your existing `[llm]` trace line** in `AgentLoop.cs` (character count ÷ 4 is a crude but workable estimate for English text):
+- [ ] **Add a rough token estimate to your existing `[llm]` trace line** in `AgentLoop.cs` (character count ÷ 4 is a crude but workable estimate for English text). Placement: this *replaces* your Lesson 1 `Console.WriteLine($"[llm] call {i + 1} — {_history.Count} messages in history");` line in place, in the same spot inside the `for` loop — add the `approxTokens` line directly above it, then swap the `WriteLine` for this one, rather than adding a second print alongside the old one:
    ```csharp
    var approxTokens = _history.Sum(m => (m.Text?.Length ?? 0)) / 4;
    Console.WriteLine($"[llm] call {i + 1} — {_history.Count} messages, ~{approxTokens} tokens");
@@ -50,7 +50,7 @@ You'll be restarting the chat-model `llama-server` window (not the embedding one
    ```
    Set `MaxHistoryMessages` to `6`, `dotnet run`, and ask a question, then a few unrelated filler questions, then a follow-up that references your first answer by name (e.g. "what did you say about X earlier?"). Does it still remember?
 - [ ] **Set `MaxHistoryMessages` to `80`** and ask ten search-heavy questions in a row. Before you start, estimate (from your Exercise 2 numbers) roughly which question number will push you past 32,768 tokens — then run it and see how close your prediction was.
-- [ ] **Implement the improved strategy.** Instead of removing old messages outright, walk the history from oldest to newest and replace the *content* of old tool-result messages with a short placeholder, once history exceeds some threshold, while keeping the question/answer pairs themselves intact:
+- [ ] **Implement the improved strategy.** Instead of removing old messages outright, walk the history from oldest to newest and replace the *content* of old tool-result messages with a short placeholder, once history exceeds some threshold, while keeping the question/answer pairs themselves intact. Placement: this code *replaces* the hard-trim `while (_history.Count > MaxHistoryMessages) _history.RemoveAt(0);` block you just added, in the same spot in `AskAsync` (right after the user's message is added to `_history`) — you're swapping one trimming strategy for the other, not running both:
    ```csharp
    if (_history.Count > MaxHistoryMessages)
    {

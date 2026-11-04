@@ -49,7 +49,7 @@ Both `llama-server` windows from Lesson 0 must still be running. All file paths 
        public IReadOnlyList<Chunk> All => _chunks;
    }
    ```
-- [ ] **Index the notes folder at startup**, reading every `.md` file under `samples/notes/` and embedding its full contents as one chunk (don't split yet — that's Lesson 3):
+- [ ] **Index the notes folder at startup**, reading every `.md` file under `samples/notes/` and embedding its full contents as one chunk (don't split yet — that's Lesson 3). Placement: right after your `embeddingGenerator` is built, and before anything involving `chatClient` — this step only depends on the embedding client, and `store` needs to exist, at this same method-level scope, before the `while (true)` input loop starts, since Exercise 2's `/search` command (added inside that loop) reads from it:
    ```csharp
    var store = new VectorStore();
    foreach (var path in Directory.GetFiles("samples/notes", "*.md", SearchOption.AllDirectories))
@@ -67,7 +67,7 @@ Both `llama-server` windows from Lesson 0 must still be running. All file paths 
 
 **Do**
 
-- [ ] **Add a `/search <text>` command** to your `Program.cs` input loop (check for it before passing input to the agent loop):
+- [ ] **Add a `/search <text>` command** to your `Program.cs` input loop. Placement: inside the `while (true)` loop, right after you read `input` and check it isn't empty, but *before* the line that calls `loop.AskAsync(input)` — this command needs to intercept the input and `continue` the loop instead of ever reaching the agent:
    ```csharp
    if (input.StartsWith("/search "))
    {

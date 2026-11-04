@@ -32,7 +32,7 @@ Both `llama-server` windows must still be running. All paths are relative to you
    }
    ```
    Note the `Instruct: ... \nQuery:` prefix on the query embedding — that's the asymmetric-search instruction from Lesson 2's preview. Your *documents* stay embedded as plain `heading path + text`, with no prefix; only the *query* side gets it.
-- [ ] **Register it as a tool** in `Program.cs`, alongside your existing tools, and add it to the `AgentLoop`'s tool list:
+- [ ] **Register it as a tool** in `Program.cs`. Placement: `noteTools` needs `store` and `embeddingGenerator` to already exist (both from Lesson 2), so this goes after those, and it *replaces* your existing `AIFunction[] tools = [...]` array — add the new line, don't create a second array:
    ```csharp
    var noteTools = new NoteTools(store, embeddingGenerator);
    AIFunction[] tools =
@@ -42,7 +42,7 @@ Both `llama-server` windows must still be running. All paths are relative to you
        AIFunctionFactory.Create(noteTools.SearchNotes),
    ];
    ```
-- [ ] **Add a system prompt.** Pass it as the first message in your `AgentLoop`'s history (or as a constructor parameter you prepend before the user's first message):
+- [ ] **Add a system prompt.** This is a new field inside `Agent/AgentLoop.cs` (not `Program.cs`) — add it as a `private static readonly` field on the `AgentLoop` class, alongside `_history` and `MaxToolIterations`. Then, inside `AskAsync`, prepend it to `_history` once, the first time the method runs (e.g. `if (_history.Count == 0) _history.Add(SystemPrompt);`, right before you add the user's message) — that way it's sent on every call without being duplicated on every turn:
    ```csharp
    private static readonly ChatMessage SystemPrompt = new(ChatRole.System, """
        You are a helpful assistant with access to the user's personal notes.

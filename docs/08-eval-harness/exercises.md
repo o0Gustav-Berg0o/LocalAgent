@@ -24,7 +24,7 @@ Both `llama-server` windows must still be running. All paths are relative to you
 
 **Do**
 
-- [ ] **Add an `/eval` command** to `Program.cs` that reads `eval/questions.json`, runs each question through your embedding + `VectorStore.TopK` path directly (the same code `search_notes` uses — not through the agent loop), and checks whether any `expectedSources` filename appears among the top-`k` chunk sources:
+- [ ] **Add an `/eval` command** to `Program.cs` that reads `eval/questions.json`, runs each question through your embedding + `VectorStore.TopK` path directly (the same code `search_notes` uses — not through the agent loop), and checks whether any `expectedSources` filename appears among the top-`k` chunk sources. Placement: inside your `while (true)` input loop, alongside `/search`, `/chunks`, and `/reindex`, still before the `loop.AskAsync(input)` call. The `record EvalQuestion(...)` declaration at the bottom can't live inside the `while` loop itself (C# doesn't allow a `record` declared inside a loop body) — put it right after `Main`'s closing brace, at class level, alongside `Program`:
    ```csharp
    if (input.Trim() == "/eval")
    {
