@@ -59,7 +59,70 @@ Both `llama-server` windows from Lesson 0 must still be running. All file paths 
        store.Add(new Chunk(Path.GetFileName(path), text, embedding.ToArray()));
    }
    ```
-- [ ] **Add JSON persistence.** Serialize `store.All` to `index.json` after indexing, and on startup, check each note file's content hash against what's stored; only re-embed files that are new or changed. (`System.Security.Cryptography.SHA256` over the file bytes gives you a hash; store it alongside each chunk in the JSON, keyed by source file.) You don't need this working perfectly yet — getting the skip-unchanged-files logic right is itself worth sitting with for a bit.
+- [ ] **Add a `Hash` field to `Chunk`**, so each chunk can carry the hash of the source file it came from (needed for the change-detection step below):
+   ```csharp
+   public record Chunk(string SourceFile, string Text, float[] Vector, string Hash);
+   ```
+   This changes the constructor shape — your indexing loop's `new Chunk(...)` call now needs a fourth argument.
+- [ ] **Create `Rag/Cacher.cs`** to load and save the index as `index.json` in your project root. `Retrieve` deserializes straight into `List<Chunk>` (it works without any extra setup because `Chunk` is a record with a single constructor, so `System.Text.Json` can match its properties by name) and wraps the results in a `VectorStore`; `Save` writes `store.All` back out:
+   ```csharp
+   namespace LocalAgent.Rag;
+
+   public static class Cacher
+   {
+       private const string FileName = "index.json";
+
+       public static VectorStore Retrieve()
+       {
+           var store = new VectorStore();
+           if (!File.Exists(FileName))
+               return store; // nothing cached yet -- first run
+
+           var json = File.ReadAllText(FileName);
+           var chunks = System.Text.Json.JsonSerializer.Deserialize<List<Chunk>>(json) ?? [];
+           foreach (var chunk in chunks)
+               store.Add(chunk);
+
+           return store;
+       }
+
+       public static void Save(VectorStore store)
+       {
+           var json = System.Text.Json.JsonSerializer.Serialize(store.All);
+           File.WriteAllText(FileName, json);
+       }
+   }
+   ```
+   (Don't be tempted to `Deserialize<VectorStore>` directly — `VectorStore`'s chunk list is private with no public setter or matching constructor, so `System.Text.Json` would silently hand you back an empty store instead of failing loudly. Deserializing into `List<Chunk>` first and adding each one through `VectorStore.Add` sidesteps that.)
+- [ ] **Update your indexing loop to use the cache.** Placement: this *replaces* the simple indexing loop from the bullet above, in the same spot — load the cache first, compute each file's hash, and only call the embedding model for files that are new or changed:
+   ```csharp
+   var cached = Cacher.Retrieve();
+   var cachedByFile = cached.All.ToDictionary(c => c.SourceFile);
+
+   var store = new VectorStore();
+   foreach (var path in Directory.GetFiles("samples/notes", "*.md", SearchOption.AllDirectories))
+   {
+       var fileName = Path.GetFileName(path);
+       var bytes = await File.ReadAllBytesAsync(path);
+       var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
+
+       if (cachedByFile.TryGetValue(fileName, out var old) && old.Hash == hash)
+       {
+           store.Add(old); // unchanged -- reuse the cached chunk and its vector, skip embedding
+       }
+       else
+       {
+           var text = await File.ReadAllTextAsync(path);
+           var embedding = await embeddingGenerator.GenerateVectorAsync(text);
+           store.Add(new Chunk(fileName, text, embedding.ToArray(), hash)); // new or changed
+       }
+   }
+   Cacher.Save(store);
+   ```
+- [ ] **Run `dotnet run` twice in a row** without changing any notes. The second run should be noticeably faster to reach the prompt, since nothing gets re-embedded. Then edit one note's content and run again — only that file's chunk should get re-embedded.
+
+**Observe**
+- Delete `index.json` and run once — does it rebuild cleanly from nothing? Edit one note and run again — does only that file get re-embedded, going by how long the startup takes?
 
 ## Exercise 2 — `/search` as a standalone command
 

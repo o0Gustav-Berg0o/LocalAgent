@@ -16,7 +16,7 @@ Both `llama-server` windows must still be running. All paths are relative to you
    ```csharp
    namespace LocalAgent.Rag;
 
-   public record Chunk2(string HeadingPath, string Text); // rename/merge with your Lesson 2 Chunk once it also carries a vector
+   public record Chunk2(string HeadingPath, string Text); // rename/merge with your Lesson 2 Chunk, which by now also carries a Vector and a Hash
 
    public static class MarkdownChunker
    {
