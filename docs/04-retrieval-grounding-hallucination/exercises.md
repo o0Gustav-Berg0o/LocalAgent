@@ -23,6 +23,8 @@ Both `llama-server` windows must still be running. All paths are relative to you
            [Description("A short search query capturing what to look for, not the user's full original sentence.")]
            string query)
        {
+           // Only the query gets this instruction prefix; stored documents stay embedded plain
+           // (heading path + text) -- this asymmetry is what Lesson 2 previewed.
            var queryVector = (await embeddingGenerator.GenerateVectorAsync($"Instruct: Given a question, retrieve relevant passages\nQuery:{query}")).ToArray();
            var hits = store.TopK(queryVector, k: 6);
            if (hits.Count == 0) return "No relevant passages found.";
