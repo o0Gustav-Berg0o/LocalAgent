@@ -38,6 +38,9 @@ Both `llama-server` windows must still be running. All paths are relative to you
            var hits = store.TopK(queryVector, k: 6).Where(h => h.Score >= 0.3f).ToList();
            var foundSources = hits.Select(h => h.Chunk.SourceFile).ToHashSet();
 
+           // A question with an empty expectedSources is a "should find nothing" case -- it
+           // passes only if MinScore filtered out every hit; otherwise it passes if any
+           // expected file showed up among the results.
            bool ok = q.ExpectedSources.Count == 0
                ? hits.Count == 0
                : q.ExpectedSources.Any(foundSources.Contains);
