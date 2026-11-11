@@ -22,11 +22,18 @@ Both `llama-server` windows must still be running. All paths are relative to you
    {
        public static List<Chunk2> Chunk(string fileName, string text, int maxChunkChars = 2000)
        {
-           var document = Markdig.Markdown.Parse(text);
-           var chunks = new List<Chunk2>();
-           var headingStack = new List<(int Level, string Text)>();
-           var buffer = new System.Text.StringBuilder();
+           var document = Markdig.Markdown.Parse(text); // parse once into a tree of top-level blocks
 
+           var chunks = new List<Chunk2>();
+
+           // The heading hierarchy we're currently nested under, e.g. [(1, "Setup"), (2, "Prerequisites")].
+           // A level-2 heading replaces any previous level-2 (or deeper) entry, but keeps level-1 entries above it.
+           var headingStack = new List<(int Level, string Text)>();
+
+           var buffer = new System.Text.StringBuilder(); // text accumulated for the chunk currently being built
+
+           // Turns whatever's in `buffer` into a finished chunk, then clears it so the next block
+           // starts a fresh one. A no-op if nothing's been accumulated (e.g. two headings in a row).
            void Flush()
            {
                if (buffer.Length == 0) return;
@@ -37,22 +44,34 @@ Both `llama-server` windows must still be running. All paths are relative to you
 
            foreach (var block in document)
            {
-               if (block is Markdig.Extensions.Yaml.YamlFrontMatterBlock) continue;
+               if (block is Markdig.Extensions.Yaml.YamlFrontMatterBlock) continue; // metadata, not content
 
                if (block is Markdig.Syntax.HeadingBlock heading)
                {
-                   Flush();
+                   Flush(); // this heading ends whatever chunk was building under the previous one
+
+                   // Drop any stack entries at this heading's level or deeper — a new "## Foo" replaces
+                   // a previous "## Bar" and also clears out any "### Baz" nested under that old "## Bar".
                    headingStack.RemoveAll(h => h.Level >= heading.Level);
+
+                   // Pull the heading's raw source text via its span, then strip the leading "#"s and space.
                    var headingText = text[heading.Span.Start..(heading.Span.End + 1)].TrimStart('#', ' ');
                    headingStack.Add((heading.Level, headingText));
-                   continue;
+                   continue; // a heading itself never becomes chunk content
                }
 
+               // Any non-heading block (paragraph, list, code fence, table, ...) — grab its original text
+               // whole, by span, so we never reconstruct or reformat it.
                var blockText = text[block.Span.Start..(block.Span.End + 1)];
+
+               // If this block would push the buffer past the limit, flush what's already there FIRST,
+               // so the block that overflowed starts the next chunk instead of being dropped or split.
                if (buffer.Length + blockText.Length > maxChunkChars) Flush();
-               buffer.AppendLine(blockText);
+
+               buffer.AppendLine(blockText); // always append — this line runs whether or not we just flushed
            }
-           Flush();
+
+           Flush(); // the loop ends with content still in the buffer unless the last block was a heading
            return chunks;
        }
    }
