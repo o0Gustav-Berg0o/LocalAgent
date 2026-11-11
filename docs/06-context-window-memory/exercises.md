@@ -54,6 +54,8 @@ You'll be restarting the chat-model `llama-server` window (not the embedding one
    ```csharp
    if (_history.Count > MaxHistoryMessages)
    {
+       // Walk oldest-to-newest, replacing old tool results with a placeholder instead of
+       // deleting the whole turn -- the question/answer pairs themselves stay intact.
        foreach (var msg in _history.Take(_history.Count - MaxHistoryMessages))
        {
            if (msg.Role == ChatRole.Tool)
