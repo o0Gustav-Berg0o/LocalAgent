@@ -65,6 +65,8 @@ Both `llama-server` windows must still be running. All paths are relative to you
        [Description("The note's title, used as its filename.")] string title,
        [Description("The full markdown content of the note.")] string content)
    {
+       // The tool only stages the write here -- it has no filesystem access. Program.cs is
+       // what actually writes, and only after the user confirms below.
        PendingNote = (title, content);
        return $"PENDING CONFIRMATION — show this exactly to the user and wait for yes/no:\n\nTitle: {title}\n\n{content}";
    }
@@ -75,10 +77,12 @@ Both `llama-server` windows must still be running. All paths are relative to you
    ```csharp
    if (noteTools.PendingNote is { } pending)
    {
+       // Show the EXACT content that would be written, never a summary, so the user can
+       // actually catch something malicious (e.g. an injected instruction) before approving.
        Console.WriteLine($"\n--- Confirm note creation ---\nTitle: {pending.Title}\n\n{pending.Content}\n-----------------------------");
        Console.Write("Create this note? (yes/no) > ");
        var confirm = Console.ReadLine();
-       noteTools.PendingNote = null;
+       noteTools.PendingNote = null; // clear it either way, so a stale pending note can't leak into a later turn
 
        if (confirm?.Trim().ToLower() == "yes")
        {
