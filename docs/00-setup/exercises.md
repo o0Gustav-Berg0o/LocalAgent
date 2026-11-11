@@ -108,10 +108,10 @@ Platform notes below assume Windows + PowerShell, since that matches the referen
    using System.ClientModel;
 
    var client = new OpenAIClient(
-           new ApiKeyCredential("not-needed-for-local-llama-server"),
-           new OpenAIClientOptions { Endpoint = new Uri("http://localhost:8080/v1") })
-       .GetChatClient("qwen3-vl-4b")
-       .AsIChatClient();
+           new ApiKeyCredential("not-needed-for-local-llama-server"), // llama-server doesn't check this; OpenAIClient just requires some value
+           new OpenAIClientOptions { Endpoint = new Uri("http://localhost:8080/v1") }) // points at your local server instead of OpenAI's cloud
+       .GetChatClient("qwen3-vl-4b") // must match the --alias you passed to llama-server
+       .AsIChatClient(); // adapts the OpenAI-specific client to Microsoft.Extensions.AI's generic IChatClient
 
    var response = await client.GetResponseAsync("Hello");
    Console.WriteLine(response.Text);
