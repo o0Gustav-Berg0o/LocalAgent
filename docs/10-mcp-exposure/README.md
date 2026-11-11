@@ -1,6 +1,7 @@
 # Lesson 10 — Exposing Tools via MCP
 
 **Slides:** https://docs.google.com/presentation/d/15HAkKKqWOd1PmhS53ZkE4QxoNSivuXgPcJPocv1CcI4/edit
+**Quiz:** [quiz.md](quiz.md) · https://docs.google.com/document/d/14hDFcpgkevI3VTck1zL856ccbQJB0dsyzfrtnPIvvZA/edit
 
 ## Learning objectives
 

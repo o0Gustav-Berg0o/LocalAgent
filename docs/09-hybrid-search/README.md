@@ -1,6 +1,7 @@
 # Lesson 9 — Beyond Vectors: Hybrid Search
 
 **Slides:** https://docs.google.com/presentation/d/1rhVS5370y47nqosqlZYCjY_HiLzMB4oqYQjX-Gh0_Rg/edit
+**Quiz:** [quiz.md](quiz.md) · https://docs.google.com/document/d/1oWtS_wxCb9uhzuo-KxgqwhLaZlUxCFs5mHDqyo04Zk0/edit
 
 ## Learning objectives
 

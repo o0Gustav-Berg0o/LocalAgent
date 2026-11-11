@@ -1,6 +1,7 @@
 # Lesson 0 — Setup & Orientation
 
 **Slides:** https://docs.google.com/presentation/d/1z1c1ISkju2oIRF0f8jgvGLPVsPiZNzhZMMoLjcZkjhQ/edit
+**Quiz:** [quiz.md](quiz.md) · https://docs.google.com/document/d/1hnqAKbtCOdt583wY9OTuvHnloNHggW53OASUBHkzdMk/edit
 
 ## Learning objectives
 

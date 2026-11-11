@@ -1,6 +1,7 @@
 # Lesson 6 — Context Window & Memory
 
 **Slides:** https://docs.google.com/presentation/d/1jL-P7t947eaSrwKhu5WI4c3xvkzcKPWPUfJkou77E7A/edit
+**Quiz:** [quiz.md](quiz.md) · https://docs.google.com/document/d/1tP7sfLp5g02eA5DfOFfHkiIfbo9DdTx2DGDCA18j5Nk/edit
 
 ## Learning objectives
 

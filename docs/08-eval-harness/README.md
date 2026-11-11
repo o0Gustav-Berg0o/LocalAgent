@@ -1,6 +1,7 @@
 # Lesson 8 — Measuring Quality: an Eval Harness
 
 **Slides:** https://docs.google.com/presentation/d/1R4dREpngqfLWuMU7pCbGNuQRuK7Fy3PqktUiXuQPNGc/edit
+**Quiz:** [quiz.md](quiz.md) · https://docs.google.com/document/d/1Cz0v0LNCX71PJ_zAJZS9EUL16LtgRaBV0NngQgvfDww/edit
 
 ## Learning objectives
 

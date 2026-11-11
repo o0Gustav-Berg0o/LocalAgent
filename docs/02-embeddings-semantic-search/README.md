@@ -1,6 +1,7 @@
 # Lesson 2 — Embeddings & Semantic Search
 
 **Slides:** https://docs.google.com/presentation/d/1N7eZ9RlSBQ8dxbpWRqbzDgH62hL3qeWp4BKqd26rACY/edit
+**Quiz:** [quiz.md](quiz.md) · https://docs.google.com/document/d/1zbfJugj7NA1scwH45gEjbMwzlazgi4Axw2RF7xkj2ZY/edit
 
 ## Learning objectives
 

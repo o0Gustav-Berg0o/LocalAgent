@@ -1,6 +1,7 @@
 # Lesson 11 — Capstone & Retrospective
 
 **Slides:** https://docs.google.com/presentation/d/19oA5M3CZJCXjnQPNkIMrejFCi96P8kZpvub0mZLScnQ/edit
+**Quiz:** [quiz.md](quiz.md) · https://docs.google.com/document/d/1MBiRa9FGaKnhzDHEqEjEw4qYND8nkc9OYsqYqMRSQ3c/edit
 
 ## Learning objectives
 

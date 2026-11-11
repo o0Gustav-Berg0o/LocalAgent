@@ -1,6 +1,7 @@
 # Lesson 1 — Agents, Tools & the Loop
 
 **Slides:** https://docs.google.com/presentation/d/1RER_wUZzuF7AGUdPhFTkM3h_ZMW7OUV9QINBiq9cy4Y/edit
+**Quiz:** [quiz.md](quiz.md) · https://docs.google.com/document/d/1dS2IAUeDxhKeSGnO3Y3iD1QtqUvAC0FlB-DqqhT5GEY/edit
 
 ## Learning objectives
 

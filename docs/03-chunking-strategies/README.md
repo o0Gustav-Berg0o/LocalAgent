@@ -1,6 +1,7 @@
 # Lesson 3 — Chunking Strategies
 
 **Slides:** https://docs.google.com/presentation/d/1TAU4u_FTCMj1CStEA67WmSg__PJQaklQHJS_xc4fQbE/edit
+**Quiz:** [quiz.md](quiz.md) · https://docs.google.com/document/d/1WpA5RFUzISCjyux0YTycsH6xRIvMqLDN-EZI3Sfa7Ks/edit
 
 ## Learning objectives
 
