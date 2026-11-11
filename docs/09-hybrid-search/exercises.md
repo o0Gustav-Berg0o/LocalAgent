@@ -39,6 +39,8 @@ Both `llama-server` windows must still be running. All paths are relative to you
            var tokenizedDocs = documents.Select(Tokenize).ToList();
            var avgLen = tokenizedDocs.Average(d => d.Count);
            var queryTerms = Tokenize(query);
+           // Document frequency: how many documents contain each query term at all -- rarer
+           // terms (lower docFreq) get a bigger idf weight below.
            var df = queryTerms.Distinct().ToDictionary(
                term => term,
                term => tokenizedDocs.Count(d => d.Contains(term)));
@@ -50,9 +52,11 @@ Both `llama-server` windows must still be running. All paths are relative to you
                double score = 0;
                foreach (var term in queryTerms.Distinct())
                {
-                   int tf = doc.Count(t => t == term);
+                   int tf = doc.Count(t => t == term); // term frequency: how many times this word appears in this doc
                    if (tf == 0 || !df.TryGetValue(term, out var docFreq) || docFreq == 0) continue;
                    double idf = Math.Log(1 + (documents.Count - docFreq + 0.5) / (docFreq + 0.5));
+                   // Standard BM25 term score: idf weight times a saturating function of term
+                   // frequency, normalized against this document's length relative to the average.
                    score += idf * (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * doc.Count / avgLen));
                }
                scores.Add((i, score));
@@ -85,6 +89,8 @@ Both `llama-server` windows must still be running. All paths are relative to you
            for (int rank = 0; rank < ranking.Count; rank++)
            {
                var idx = ranking[rank];
+               // 1/(k+rank): a chunk's contribution shrinks the further down a list it ranks.
+               // Summing across both lists means ranking high in either (or both) helps.
                scores[idx] = scores.GetValueOrDefault(idx) + 1.0 / (k + rank + 1);
            }
        }
