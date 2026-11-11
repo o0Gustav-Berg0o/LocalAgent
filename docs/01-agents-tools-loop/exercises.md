@@ -31,11 +31,15 @@ All file paths below are relative to your `LocalAgent` project root (the folder 
        {
            try
            {
+               // DataTable.Compute is a quick way to evaluate a simple arithmetic string without
+               // writing your own parser — it's not built for this, but it's good enough here.
                var result = new System.Data.DataTable().Compute(expression, null);
                return result.ToString() ?? "Error: could not compute a result.";
            }
            catch (Exception ex)
            {
+               // The model reads this message, not a developer — keep it short and return it as
+               // the tool result instead of letting the exception propagate and crash the loop.
                return $"Error: {ex.Message}";
            }
        }
@@ -77,7 +81,11 @@ All file paths below are relative to your `LocalAgent` project root (the folder 
 
    public class AgentLoop(IChatClient client, IList<AITool> tools)
    {
+       // The whole conversation so far, resent in full on every call — the model itself
+       // remembers nothing between requests (Lesson 6 covers this in depth).
        private readonly List<ChatMessage> _history = [];
+
+       // A hard ceiling so a confused model can't call tools forever.
        private const int MaxToolIterations = 6;
 
        public async Task<string> AskAsync(string userInput)
@@ -88,16 +96,20 @@ All file paths below are relative to your `LocalAgent` project root (the folder 
            {
                Console.WriteLine($"[llm] call {i + 1} — {_history.Count} messages in history");
 
+               // Every iteration resends the entire history — see the comment on _history above.
                var response = await client.GetResponseAsync(
                    _history,
                    new ChatOptions { Tools = tools });
 
                _history.AddMessages(response);
 
+               // The model only ever *requests* a tool call via FunctionCallContent — it never
+               // executes anything itself. Your code below decides whether and how to run it.
                var calls = response.Messages
                    .SelectMany(m => m.Contents.OfType<FunctionCallContent>())
                    .ToList();
 
+               // No tool requests means the model considers itself done — return its text and exit.
                if (calls.Count == 0)
                    return response.Text;
 
@@ -112,17 +124,23 @@ All file paths below are relative to your `LocalAgent` project root (the folder 
                    }
                    catch (Exception ex)
                    {
+                       // Turn a thrown exception into a result string instead of letting it crash
+                       // the loop, so the model gets a chance to see what went wrong and recover.
                        result = $"Error: {ex.Message}";
                    }
 
+                   // Only the console trace line is truncated — the full result still goes to the model below.
                    var truncated = result.Length > 600 ? result[..600] + "…" : result;
                    Console.WriteLine($"[tool] {call.Name}({string.Join(", ", call.Arguments?.Select(a => $"{a.Key}={a.Value}") ?? [])}) -> {truncated}");
 
+                   // Feed the result back as a tool-role message so the next [llm] call above sees it.
                    _history.Add(new ChatMessage(ChatRole.Tool,
                        [new FunctionResultContent(call.CallId, result)]));
                }
            }
 
+           // Hit MaxToolIterations without the model ever stopping on its own — bail out
+           // rather than looping forever.
            return "Sorry, I couldn't finish that after several tool calls — something may be stuck in a loop.";
        }
    }
