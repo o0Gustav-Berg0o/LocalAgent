@@ -39,6 +39,7 @@ Both `llama-server` windows from Lesson 0 must still be running. All file paths 
 
        public void Add(Chunk chunk) => _chunks.Add(chunk);
 
+       // Returns the k chunks whose vectors are most similar to queryVector, highest score first.
        public IReadOnlyList<(Chunk Chunk, float Score)> TopK(float[] queryVector, int k)
            => _chunks
                .Select(c => (Chunk: c, Score: TensorPrimitives.CosineSimilarity(c.Vector, queryVector)))
@@ -79,6 +80,7 @@ Both `llama-server` windows from Lesson 0 must still be running. All file paths 
                return store; // nothing cached yet -- first run
 
            var json = File.ReadAllText(FileName);
+           // Deserialize into List<Chunk>, not VectorStore directly -- see the note below the block.
            var chunks = System.Text.Json.JsonSerializer.Deserialize<List<Chunk>>(json) ?? [];
            foreach (var chunk in chunks)
                store.Add(chunk);
