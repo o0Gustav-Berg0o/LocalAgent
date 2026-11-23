@@ -85,14 +85,124 @@ Both `llama-server` windows must still be running. All paths are relative to you
        var path = Path.Combine("samples/notes", fileName);
        var text = await File.ReadAllTextAsync(path);
        foreach (var chunk in LocalAgent.Rag.MarkdownChunker.Chunk(fileName, text))
+       {
            Console.WriteLine($"[{chunk.HeadingPath}]\n{chunk.Text}\n---");
-       continue;
+       }
+
+       continue; // AFTER the foreach's closing brace, inside the if -- same rule as /search in Lesson 2
    }
    ```
 - [ ] **Run `dotnet run`** and try `/chunks <one of your note filenames>.md`.
 
 **Observe**
 - Does any chunk cut a code block, list, or table in half? (It shouldn't — if it does, check your block-span handling.)
+
+## Checkpoint — Tidy the input loop with a command helper
+
+You now have two slash commands (`/search`, `/chunks`) as separate `if` blocks, `/reindex` is next, and Lessons 8 and 9 add three more. Each new block repeats the same prefix-slicing and the same `continue;` — the exact line that's easy to put in the wrong place. Do this small refactor **now, before `/reindex`**, so every later command is "add one `case` and one method" instead of "add another `if` block". No new behavior; `/search` and `/chunks` must work exactly as before.
+
+**Goal:** one place that parses a slash command and dispatches it, so `Program.cs`'s loop has a single `if` for all commands.
+
+**Do**
+
+- [ ] **Create `Helpers/CommandContext.cs`** — the shared state the command handlers need, so they don't have to live inside `Main`. `Store` has a setter because `/reindex` (next exercise) replaces it:
+   ```csharp
+   using LocalAgent.Rag;
+   using Microsoft.Extensions.AI;
+
+   namespace LocalAgent.Helpers;
+
+   public class CommandContext
+   {
+       public required VectorStore Store { get; set; }
+       public required IEmbeddingGenerator<string, Embedding<float>> Embeddings { get; init; }
+       public required string NotesFolder { get; init; }
+   }
+   ```
+- [ ] **Create `Helpers/CommandHelper.cs`** with a parser and a dispatcher. The parser only *splits* text — it does no I/O and knows no command names, so you can test it by eye. The dispatcher is the one place that knows which commands exist:
+   ```csharp
+   using LocalAgent.Rag;
+   using Microsoft.Extensions.AI; // GenerateVectorAsync is an extension method from this namespace
+
+   namespace LocalAgent.Helpers;
+
+   public static class CommandHelper
+   {
+       // Splits "/search car tuning" into ("/search", "car tuning"). Pure string work.
+       public static (bool IsCommand, string Command, string Argument) Parse(string input)
+       {
+           if (!input.StartsWith('/'))
+               return (false, "", ""); // plain chat -- not our business
+
+           int space = input.IndexOf(' ');
+           if (space == -1)
+               return (true, input.Trim().ToLowerInvariant(), ""); // "/reindex": no arguments
+
+           // Only the FIRST space separates command from argument, so "/search car tuning"
+           // keeps all of "car tuning" as the argument.
+           return (true, input[..space].ToLowerInvariant(), input[(space + 1)..].Trim());
+       }
+
+       // Returns true if the line was a slash command (handled here), false if it should go to the agent.
+       public static async Task<bool> HandleAsync(string input, CommandContext ctx)
+       {
+           var (isCommand, command, argument) = Parse(input);
+           if (!isCommand) return false;
+
+           switch (command)
+           {
+               case "/search": await SearchAsync(argument, ctx); break;
+               case "/chunks": await ChunksAsync(argument, ctx); break;
+               default: Console.WriteLine($"Unknown command: {command}"); break;
+           }
+           return true; // handled -- even an unknown command must not reach the agent
+       }
+
+       private static async Task SearchAsync(string query, CommandContext ctx)
+       {
+           if (string.IsNullOrWhiteSpace(query))
+           {
+               Console.WriteLine("Usage: /search <text>");
+               return;
+           }
+
+           var queryVector = (await ctx.Embeddings.GenerateVectorAsync(query)).ToArray();
+           foreach (var (chunk, score) in ctx.Store.TopK(queryVector, k: 6))
+           {
+               Console.WriteLine($"{score:F3}  {chunk.SourceFile}  \"{chunk.Text[..Math.Min(80, chunk.Text.Length)]}…\"");
+           }
+       }
+
+       private static async Task ChunksAsync(string fileName, CommandContext ctx)
+       {
+           if (string.IsNullOrWhiteSpace(fileName))
+           {
+               Console.WriteLine("Usage: /chunks <file>");
+               return;
+           }
+
+           var path = Path.Combine(ctx.NotesFolder, fileName);
+           var text = await File.ReadAllTextAsync(path);
+           foreach (var chunk in MarkdownChunker.Chunk(fileName, text))
+           {
+               Console.WriteLine($"[{chunk.HeadingPath}]\n{chunk.Text}\n---");
+           }
+       }
+   }
+   ```
+   (Notice there is no `continue;` in the handlers — they just finish. `HandleAsync` returning `true` is what tells the loop to skip the agent. The "continue in the wrong place" bug can't happen anymore.)
+- [ ] **Replace both `if` blocks in `Program.cs`** (`/search` and `/chunks`) with one call. Placement: inside the `while (true)` loop, right after the empty-input check and before `loop.AskAsync(input)`. Build the context once, before the loop, after `store` and `embeddingGenerator` exist:
+   ```csharp
+   var ctx = new CommandContext { Store = store, Embeddings = embeddingGenerator, NotesFolder = "samples/notes" };
+
+   // ...inside while (true), after the empty-input check:
+   if (await CommandHelper.HandleAsync(input, ctx))
+       continue; // this continue is directly in the while loop -- there's no inner loop to confuse it with
+   ```
+- [ ] **Run `dotnet run`** and check all four: `/search holden` and `/chunks <file>.md` behave as before (and print no `[llm]` line); `/serch holden` prints `Unknown command: /serch` instead of going to the model; `hello there` still reaches the agent.
+
+**Observe**
+- Typing `/search` with nothing after it now prints a usage line instead of crashing on a slice or embedding an empty string.
 
 ## Exercise 2 — Wire chunking into indexing, and prove the heading-path prefix matters
 
@@ -101,7 +211,7 @@ Both `llama-server` windows must still be running. All paths are relative to you
 **Do**
 
 - [ ] **Update your Lesson 2 indexing loop** to chunk each file before embedding, instead of embedding the whole file as one chunk — embed `chunk.HeadingPath + "\n\n" + chunk.Text` for each chunk `MarkdownChunker.Chunk(...)` returns, and store the `HeadingPath` alongside the vector in your `VectorStore`. Placement: this is an in-place rewrite of the body of the `foreach` loop you wrote in Lesson 2 Exercise 1 (the one that currently does one `GenerateVectorAsync` + one `store.Add` per file) — you're changing what happens inside that loop, not adding a second loop next to it.
-- [ ] **Add a `/reindex` command** that re-runs this whole process (simplest version: just clear the store and redo everything; you can add the change-detection skip-logic back once this works).
+- [ ] **Add a `/reindex` command** that re-runs this whole process (simplest version: just clear the store and redo everything; you can add the change-detection skip-logic back once this works). Placement: with the checkpoint's command helper in place, this is one new `case "/reindex":` in `CommandHelper.HandleAsync` that calls a new private `ReindexAsync(ctx)` method — no change to the `while` loop. For `ReindexAsync` to re-run indexing, the indexing code can't stay inline in `Main`: move it into a method that returns a fresh `VectorStore` (e.g. `Indexer.BuildAsync(embeddings, notesFolder)`), call it from `Main` at startup, and call it again from `ReindexAsync`, assigning the result to `ctx.Store`.
 - [ ] Run `/reindex`, then run a handful of `/search` queries against your notes and write down the top result's score for each.
 - [ ] **Temporarily remove the prefix** — change the embedded text to just `chunk.Text`, with no heading path — and run `/reindex` again.
 - [ ] Re-run the exact same `/search` queries.

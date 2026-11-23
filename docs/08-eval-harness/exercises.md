@@ -24,9 +24,9 @@ Both `llama-server` windows must still be running. All paths are relative to you
 
 **Do**
 
-- [ ] **Add an `/eval` command** to `Program.cs` that reads `eval/questions.json`, runs each question through your embedding + `VectorStore.TopK` path directly (the same code `search_notes` uses — not through the agent loop), and checks whether any `expectedSources` filename appears among the top-`k` chunk sources. Placement: inside your `while (true)` input loop, alongside `/search`, `/chunks`, and `/reindex`, still before the `loop.AskAsync(input)` call. The `record EvalQuestion(...)` declaration at the bottom can't live inside the `while` loop itself (C# doesn't allow a `record` declared inside a loop body) — put it right after `Main`'s closing brace, at class level, alongside `Program`:
+- [ ] **Add an `/eval` command** that reads `eval/questions.json`, runs each question through your embedding + `VectorStore.TopK` path directly (the same code `search_notes` uses — not through the agent loop), and checks whether any `expectedSources` filename appears among the top-`k` chunk sources. Placement: with the command helper from Lesson 3's checkpoint, this is one new `case "/eval":` in `CommandHelper.HandleAsync` (`case "/eval": await EvalAsync(ctx); break;`) plus a new private `EvalAsync` method in the same file — no change to the `while` loop. Put the `record EvalQuestion(...)` at the bottom of `Helpers/CommandHelper.cs`, outside the `CommandHelper` class (a `record` can't be declared inside a method body):
    ```csharp
-   if (input.Trim() == "/eval")
+   private static async Task EvalAsync(CommandContext ctx)
    {
        var json = await File.ReadAllTextAsync("eval/questions.json");
        var questions = System.Text.Json.JsonSerializer.Deserialize<List<EvalQuestion>>(json)!;
@@ -34,8 +34,8 @@ Both `llama-server` windows must still be running. All paths are relative to you
 
        foreach (var q in questions)
        {
-           var queryVector = (await embeddingGenerator.GenerateVectorAsync($"Instruct: Given a question, retrieve relevant passages\nQuery:{q.Question}")).ToArray();
-           var hits = store.TopK(queryVector, k: 6).Where(h => h.Score >= 0.3f).ToList();
+           var queryVector = (await ctx.Embeddings.GenerateVectorAsync($"Instruct: Given a question, retrieve relevant passages\nQuery:{q.Question}")).ToArray();
+           var hits = ctx.Store.TopK(queryVector, k: 6).Where(h => h.Score >= 0.3f).ToList();
            var foundSources = hits.Select(h => h.Chunk.SourceFile).ToHashSet();
 
            // A question with an empty expectedSources is a "should find nothing" case -- it
@@ -49,10 +49,10 @@ Both `llama-server` windows must still be running. All paths are relative to you
            if (ok) passed++;
        }
        Console.WriteLine($"\nrecall@6: {passed}/{questions.Count} = {100.0 * passed / questions.Count:F0}%");
-       continue;
    }
 
-   record EvalQuestion(string Question, List<string> ExpectedSources);
+   // Bottom of Helpers/CommandHelper.cs, outside the CommandHelper class:
+   public record EvalQuestion(string Question, List<string> ExpectedSources);
    ```
 - [ ] `dotnet run`, type `/eval`, and check the per-question PASS/FAIL output against what you expect by eye.
 

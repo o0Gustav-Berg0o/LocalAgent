@@ -69,7 +69,30 @@ Both `llama-server` windows must still be running. All paths are relative to you
                StringSplitOptions.RemoveEmptyEntries).ToList();
    }
    ```
-- [ ] **Add a `/search-bm25 <query>` command** to `Program.cs`, scoring over `store.All.Select(c => c.Text).ToList()` and printing the top results the same way `/search` does, with source file and score. Placement: inside your `while (true)` input loop, alongside your other slash-command checks (`/search`, `/chunks`, `/reindex`, `/eval`), still before `loop.AskAsync(input)`.
+   **Wiring it into the command helper.** The switch case is only a dispatcher: it calls a method and then `break`s. The label is `"/search-bm25"`, exactly like the other commands. The parser has already lowercased the command, so it matches. Put the case between `/eval` and `default:`:
+   ```csharp
+   case "/search-bm25":
+       await SearchBm25Async(parsedInput.input, context);
+       break;
+   ```
+   The method goes next to `EvalAsync` in `Helpers/CommandHelper.cs`. It needs `using LocalAgent.Rag;` at the top of that file to see `Bm25`:
+   ```csharp
+   private static Task SearchBm25Async(string query, CommandContext ctx)
+   {
+       var documents = ctx.Store.All.Select(c => c.Text).ToList();
+       var ranked = Bm25.Score(documents, query);
+
+       // Score is 0 for chunks that share no words with the query; skip those.
+       foreach (var (index, score) in ranked.Where(r => r.Score > 0).Take(6))
+       {
+           var chunk = ctx.Store.All[index];
+           Console.WriteLine($"[{chunk.SourceFile}] (bm25 {score:F2})\n{chunk.Text}\n---");
+       }
+       return Task.CompletedTask;
+   }
+   ```
+   Two things to note. `Score` returns the indices of `documents`, which are the same order as `ctx.Store.All`, so `ctx.Store.All[index]` gives back the matching chunk and its `SourceFile`. And the method returns `Task` only so it can be awaited in the switch like `/search`. It doesn't do any async work.
+- [ ] **Add a `/search-bm25 <query>` command** to `Program.cs`, scoring over `store.All.Select(c => c.Text).ToList()` and printing the top results the same way `/search` does, with source file and score. Placement: in your command helper (Lesson 3's checkpoint) — one new `case "/search-bm25":` in `CommandHelper.HandleAsync` calling a new private `SearchBm25Async(argument, ctx)` method, next to the `/search`, `/chunks`, `/reindex` and `/eval` cases. The `while` loop doesn't change. (The parser splits on the first space, so `/search-bm25 wifi drop` arrives as command `/search-bm25` with argument `wifi drop`.)
 - [ ] `dotnet run`, `/reindex`, then run the identifier query from Exercise 1 through `/search-bm25` and compare its ranking to plain `/search`.
 
 ## Exercise 3 — Merge with RRF
@@ -99,8 +122,8 @@ Both `llama-server` windows must still be running. All paths are relative to you
        return scores.OrderByDescending(kv => kv.Value).Select(kv => (kv.Key, kv.Value)).ToList();
    }
    ```
-- [ ] **Add a `/search-hybrid <query>` command** that runs both rankings over `store.All`, fuses them, and prints the top results — keep `/search` and `/search-bm25` working too, so you can compare all three side by side. Same placement as the other slash commands: inside the `while (true)` loop, before `loop.AskAsync(input)`.
-- [ ] **Point your `SearchNotes` tool and `/eval` harness at the hybrid ranking** instead of vector-only (or add a flag to switch between them, so you can run `/eval` both ways without changing code each time). Placement: in `Tools/NoteTools.cs`, this replaces the `var hits = store.TopK(queryVector, k: 6);` line inside `SearchNotes` with a call that also runs BM25 and fuses the two rankings; in `Program.cs`, the equivalent replacement goes inside your `/eval` command, at the same `store.TopK(...)` call.
+- [ ] **Add a `/search-hybrid <query>` command** that runs both rankings over `store.All`, fuses them, and prints the top results — keep `/search` and `/search-bm25` working too, so you can compare all three side by side. Same placement as the other slash commands: a new `case "/search-hybrid":` in `CommandHelper.HandleAsync` plus a private handler method.
+- [ ] **Point your `SearchNotes` tool and `/eval` harness at the hybrid ranking** instead of vector-only (or add a flag to switch between them, so you can run `/eval` both ways without changing code each time). Placement: in `Tools/NoteTools.cs`, this replaces the `var hits = store.TopK(queryVector, k: 6);` line inside `SearchNotes` with a call that also runs BM25 and fuses the two rankings; in `Helpers/CommandHelper.cs`, the equivalent replacement goes inside your `EvalAsync` method, at the same `ctx.Store.TopK(...)` call.
 - [ ] Run `/eval` once with vector-only, once with hybrid.
 
 **Observe**

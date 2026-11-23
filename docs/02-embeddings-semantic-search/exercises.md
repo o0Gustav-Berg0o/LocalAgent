@@ -139,10 +139,16 @@ Both `llama-server` windows from Lesson 0 must still be running. All file paths 
        var query = input["/search ".Length..];
        var queryVector = (await embeddingGenerator.GenerateVectorAsync(query)).ToArray();
        foreach (var (chunk, score) in store.TopK(queryVector, k: 6))
+       {
            Console.WriteLine($"{score:F3}  {chunk.SourceFile}  \"{chunk.Text[..Math.Min(80, chunk.Text.Length)]}…\"");
-       continue;
+       }
+
+       continue; // AFTER the foreach's closing brace, inside the if: skips to the next prompt instead of sending "/search ..." to the agent
    }
    ```
+   (Heads-up: this `if` block is a stepping stone. In Lesson 3, once you have a second and third command, you'll fold all of them into one command helper so you don't keep repeating this pattern.)
+
+   (If `continue;` ends up *inside* the `foreach` braces, it only skips to the next result — the loop then falls through to `loop.AskAsync(input)` and the agent answers your `/search` command too. If you see an `[llm]` line after your search results, this is why.)
 - [ ] **Run `dotnet run`**, then:
    - `/search` using the exact wording from one of your notes.
    - `/search` again with a paraphrase — different words, same meaning.
