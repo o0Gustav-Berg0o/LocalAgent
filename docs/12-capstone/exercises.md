@@ -1,4 +1,4 @@
-# Lesson 11 — Exercises
+# Lesson 12 — Exercises
 
 ## Exercise 1 — The full demo run
 

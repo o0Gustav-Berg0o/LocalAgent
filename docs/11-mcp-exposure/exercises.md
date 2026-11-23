@@ -1,4 +1,4 @@
-# Lesson 10 — Exercises
+# Lesson 11 — Exercises
 
 This lesson's project is a **separate** console app from `LocalAgent` — create a new folder for it alongside your main project, e.g. `C:\Repos\LocalAgentMcp\`.
 

@@ -1,4 +1,4 @@
-# Lesson 11 — Review Checklist (Course-Wide)
+# Lesson 12 — Review Checklist (Course-Wide)
 
 Use this as the final gate before considering the course complete.
 

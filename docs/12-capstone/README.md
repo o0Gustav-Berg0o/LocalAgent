@@ -1,4 +1,4 @@
-# Lesson 11 — Capstone & Retrospective
+# Lesson 12 — Capstone & Retrospective
 
 **Slides:** https://docs.google.com/presentation/d/19oA5M3CZJCXjnQPNkIMrejFCi96P8kZpvub0mZLScnQ/edit
 **Quiz:** [quiz.md](quiz.md) · https://docs.google.com/document/d/1MBiRa9FGaKnhzDHEqEjEw4qYND8nkc9OYsqYqMRSQ3c/edit
@@ -21,7 +21,7 @@ By now you have:
 6. A demonstrated prompt injection, and a write tool that only acts with explicit per-action confirmation (Lesson 7).
 7. A labeled eval set and a recall@k harness you've actually used to make a decision (Lesson 8).
 8. Hybrid search (BM25 + vector via RRF), measured against vector-only (Lesson 9).
-9. The same tools exposed over MCP to an external client (Lesson 10).
+9. The same tools exposed over MCP to an external client (Lesson 11).
 
 This lesson has no new concept. It's where you step back and look at the whole thing as a system, not a sequence of exercises.
 

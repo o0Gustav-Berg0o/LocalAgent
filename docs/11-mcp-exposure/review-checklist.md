@@ -1,4 +1,4 @@
-# Lesson 10 — Review Checklist
+# Lesson 11 — Review Checklist
 
 - [ ] A minimal MCP server you built responds correctly to a connected client.
 - [ ] `search_notes`, `read_note`, and `list_notes` are callable through MCP by a different agent/client than your own console app.

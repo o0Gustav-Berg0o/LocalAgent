@@ -40,8 +40,9 @@ Each lesson's `README.md` also links to a **Google Slides deck** covering the sa
 | 7 | [Prompt Injection & the Confirmed Write Tool](docs/07-prompt-injection-confirmed-write/README.md) | Treating document content as untrusted, human-in-the-loop writes |
 | 8 | [Measuring Quality: an Eval Harness](docs/08-eval-harness/README.md) | recall@k, and why "it feels right" isn't evaluation |
 | 9 | [Beyond Vectors: Hybrid Search](docs/09-hybrid-search/README.md) | BM25 + vector search combined with Reciprocal Rank Fusion |
-| 10 | [Exposing Tools via MCP](docs/10-mcp-exposure/README.md) | Turning your tools into a reusable MCP server |
-| 11 | [Capstone & Retrospective](docs/11-capstone/README.md) | Put it all together, review your own build |
+| 10 | [Separating the Core: a Shared Library](docs/10-shared-library/README.md) | Moving shared search code into a library both apps reference |
+| 11 | [Exposing Tools via MCP](docs/11-mcp-exposure/README.md) | Turning your tools into a reusable MCP server |
+| 12 | [Capstone & Retrospective](docs/12-capstone/README.md) | Put it all together, review your own build |
 
 ## What you'll have built by the end
 
