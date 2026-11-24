@@ -1,6 +1,6 @@
 # Module 2: Agent Foundations
 
-**Goal:** turn the Course 1 loop into an agent with a proper foundation: streaming output, a provider behind one interface, settings the user can change, read-only tools, and the first permission rules.
+**Goal:** turn the loop from the RAG course into an agent with a proper foundation: streaming output, a provider behind one interface, settings the user can change, read-only tools, and the first permission rules.
 
 **Why these together:** every later module depends on the loop streaming complete messages, on the provider being swappable, on settings that persist, and on one place that decides what an action may do.
 
@@ -17,7 +17,7 @@
 ## Before you start
 
 - Module 1 complete (setup and config).
-- Course 1, Lesson 1 (the loop) and Lesson 7 (confirmed writes).
+- the RAG course, Lesson 1 (the loop) and Lesson 7 (confirmed writes).
 
 ## What you have at the end
 

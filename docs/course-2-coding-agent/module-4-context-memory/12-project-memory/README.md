@@ -66,7 +66,7 @@ The order inside the system prompt matters less than the fact that it is counted
 
 An agent note is a fact the agent believes is useful later. It is proposed, not written. The proposal shows the note text, the section it would go into, and the reason. The user answers yes, no, or edit, using the same ask pattern as Lesson 6.
 
-The rule matters because a note is trusted in every future session. A note written because a document in the project said "remember this" is an injection (Course 1, Lesson 7) that survives restarts. The approval step is the defence.
+The rule matters because a note is trusted in every future session. A note written because a document in the project said "remember this" is an injection (the RAG course, Lesson 7) that survives restarts. The approval step is the defence.
 
 ### 3.5 Size and structure
 

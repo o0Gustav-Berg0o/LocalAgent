@@ -119,7 +119,7 @@ Console.WriteLine();
 
 1. In `StreamAnswerAsync`, keep a list of tool calls. When an update contains a tool call, add it to the list. If the library gives you the complete call in one piece, use that. If it gives fragments, merge them by call identifier.
 2. After the stream ends, run the tools in the order they were requested, add each result to the history, and continue the loop as before.
-3. Print a line for each tool call before running it, using the format from Course 1: `[tool] name(arguments) -> result`.
+3. Print a line for each tool call before running it, using the format from the RAG course: `[tool] name(arguments) -> result`.
 
 **Read this carefully.** The model may ask for two tools in one answer. Both calls belong to the same assistant message, and each result must reference the call it answers. If the call identifiers do not match, the model cannot connect results to requests.
 

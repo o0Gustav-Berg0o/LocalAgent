@@ -6,7 +6,7 @@
 
 **Prerequisites:**
 - Module 2, Lessons 2 to 4: streaming, the provider seam, and the settings menu.
-- Course 1, Lesson 5 (tool design): descriptions and naming.
+- the RAG course, Lesson 5 (tool design): descriptions and naming.
 
 **Quiz:** [quiz.md](quiz.md)
 
@@ -91,7 +91,7 @@ The model decides which tool to call from the name and the description, and the 
 
 "Search" is a poor description. "Find lines containing a text across project files. Use it to locate a name or message before reading a file. Do not use it to read a whole file; use read_file for that." teaches the difference.
 
-Course 1, Lesson 5 showed that descriptions change behaviour. The same applies here, and Exercise 6 measures it.
+the RAG course, Lesson 5 showed that descriptions change behaviour. The same applies here, and Exercise 6 measures it.
 
 ### 3.6 Token economy
 
@@ -112,7 +112,7 @@ A file that does not exist is a normal result, not a crash. The tool returns a s
 
 **4.1 Encoding.** Files in the project may be UTF-8, UTF-8 with a byte-order mark, or an older Windows encoding. Swedish letters in an older file may come out wrong if the wrong encoding is assumed. Decide one default, detect the byte-order mark, and say what happens otherwise.
 
-**4.2 Line endings.** A file with `\r\n` endings and a search that splits on `\n` leaves a `\r` at the end of each line. This is the same issue as the BM25 tokenizer in Course 1. Trim line endings when returning lines.
+**4.2 Line endings.** A file with `\r\n` endings and a search that splits on `\n` leaves a `\r` at the end of each line. This is the same issue as the BM25 tokenizer in the RAG course. Trim line endings when returning lines.
 
 **4.3 Very long lines.** A minified file has no line breaks, so a line limit does nothing. Limit by bytes as well as lines, and cut long lines with a marker.
 

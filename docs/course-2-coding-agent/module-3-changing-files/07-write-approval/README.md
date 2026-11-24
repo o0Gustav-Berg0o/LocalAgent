@@ -6,7 +6,7 @@
 
 **Prerequisites:**
 - Module 2, Lessons 5 and 6: read tools, path resolution, and the permission check.
-- Course 1, Lesson 7: the confirmed-write pattern for notes.
+- the RAG course, Lesson 7: the confirmed-write pattern for notes.
 
 **Quiz:** [quiz.md](quiz.md)
 
@@ -27,7 +27,7 @@ By the end of this lesson you can:
 
 ## 2. Why this lesson exists
 
-A write is the first action in this course that changes something the user cares about. Reading a file loses nothing. Writing one can destroy work that was never saved anywhere else. Course 1 added a confirmed write for notes, which was a simple case: a new file with a title. Coding changes are different. They modify existing files, they touch several places at once, and a single approved change can hide a mistake that the user only sees later.
+A write is the first action in this course that changes something the user cares about. Reading a file loses nothing. Writing one can destroy work that was never saved anywhere else. the RAG course added a confirmed write for notes, which was a simple case: a new file with a title. Coding changes are different. They modify existing files, they touch several places at once, and a single approved change can hide a mistake that the user only sees later.
 
 The lesson is about making the write **reviewable**: the user sees what will change, approves exactly that, and the change that happens is the change that was approved.
 

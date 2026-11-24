@@ -7,7 +7,7 @@
 **Prerequisites:**
 - Module 2, Lessons 2 to 5: the loop, the provider, the settings, and the read tools.
 - Module 3, Lesson 9: the shell tool, whose output is the largest single source of context growth.
-- Course 1, Lesson 6: the context window as a finite resource.
+- the RAG course, Lesson 6: the context window as a finite resource.
 
 **Quiz:** [quiz.md](quiz.md)
 

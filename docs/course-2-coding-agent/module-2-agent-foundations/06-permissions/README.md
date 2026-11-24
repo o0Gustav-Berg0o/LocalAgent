@@ -6,7 +6,7 @@
 
 **Prerequisites:**
 - Lessons 2 to 5: the loop streams, the provider is behind a seam, settings persist, and read tools exist.
-- Course 1, Lesson 7: confirmed writes and why approval is enforced in code.
+- the RAG course, Lesson 7: confirmed writes and why approval is enforced in code.
 
 **Quiz:** [quiz.md](quiz.md)
 
@@ -39,7 +39,7 @@ A permission system also protects against the model's own mistakes. A model may 
 
 ### 3.1 Permissions live in code, not in the prompt
 
-A system prompt that says "never delete files" is a request. A model may follow it most of the time, and fail when a document it reads contains a convincing reason to ignore it (Course 1, Lesson 7). A permission check in code cannot be argued with. It sits between the model's request and the tool's execution, and it looks at the tool's name and arguments, not at the model's explanation.
+A system prompt that says "never delete files" is a request. A model may follow it most of the time, and fail when a document it reads contains a convincing reason to ignore it (the RAG course, Lesson 7). A permission check in code cannot be argued with. It sits between the model's request and the tool's execution, and it looks at the tool's name and arguments, not at the model's explanation.
 
 The order is always: **the model asks, the code decides, the tool runs or does not.**
 

@@ -18,11 +18,11 @@ Work through the exercises in order. Each one ends with a **Checkpoint**: a resu
 
 **Goal:** know the current state of the app, so you can tell later what the setup changed.
 
-**Why this matters:** in Course 1, the endpoints and model names live in `Program.cs`. Before you move them into a config file, you need to know exactly what the app does now.
+**Why this matters:** in the RAG course, the endpoints and model names live in `Program.cs`. Before you move them into a config file, you need to know exactly what the app does now.
 
 **Do**
 
-1. Start both `llama-server` processes as in Course 1, Lesson 0. Write down the ports and the model file each one loads.
+1. Start both `llama-server` processes as in the RAG course, Lesson 0. Write down the ports and the model file each one loads.
 2. Start the app with `dotnet run`. Write down the first line it prints (the number of notes indexed).
 3. Ask one notes question, for example "Who is Naomi Nagata?". Write down the first `[tool]` line in the trace.
 4. Open `Program.cs` and find every place that contains one of these values, and write down the line number:

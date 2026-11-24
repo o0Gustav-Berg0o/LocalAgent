@@ -4,11 +4,11 @@
 > **Status (final numbering):** the lessons are written. Their numbers match the folders: 01 setup, 02 to 06 Module 2, 07 to 09 Module 3, 10 to 13 Module 4, 14 to 15 Module 5, 16 to 20 Module 6, 21 to 23 Module 7, 24 capstone. Where this outline and the folders differ, the folders are the source of truth. The lessons are inside module folders (`module-1-setup` to `module-8-capstone`). Start at [README.md](README.md).
 **Goal:** students build a small, local coding agent in C#, the way a tool like Claude Code works from the inside: a loop, tools, permissions, context management, memory, modes, and frontends.
 
-**Prerequisite:** Course 1 (LocalAgent: notes RAG, tools, eval harness).
+**Prerequisite:** the RAG course (LocalAgent: notes RAG, tools, eval harness).
 
 **Language:** English. Keep code and output short. Token economy is a design rule (see below).
 
-**Format per lesson:** the same four files as Course 1 (`README.md`, `exercises.md`, `quiz.md`, `review-checklist.md`). Each lesson has one visual or UX item, so the material stays varied.
+**Format per lesson:** the same four files as the RAG course (`README.md`, `exercises.md`, `quiz.md`, `review-checklist.md`). Each lesson has one visual or UX item, so the material stays varied.
 
 ---
 
@@ -40,7 +40,7 @@ A mode is not a setting. Switching modes does not change the model or the permis
 ## Module A: Foundation
 
 ### Lesson 1 — The harness, again
-- **Build:** the agent loop from Course 1, reused for a coding task (read a file, answer a question about it).
+- **Build:** the agent loop from the RAG course, reused for a coding task (read a file, answer a question about it).
 - **Concepts:** messages, tool calls, the loop, the iteration limit.
 - **Visual:** streamed tokens as they arrive; a "working" indicator with elapsed seconds.
 
@@ -173,7 +173,7 @@ A mode is not a setting. Switching modes does not change the model or the permis
 
 ## Capstone — Lesson 23
 
-- **Build:** the agent works on a small sample project. Students run a set of coding tasks (add a function, fix a failing test, rename a symbol) and measure each change with an eval set, as Course 1 does for notes.
+- **Build:** the agent works on a small sample project. Students run a set of coding tasks (add a function, fix a failing test, rename a symbol) and measure each change with an eval set, as the RAG course does for notes.
 - **Deliverable:** a short report with the eval numbers, what changed between versions, and what is still weak.
 - **Visual:** a summary table at the end of the run.
 

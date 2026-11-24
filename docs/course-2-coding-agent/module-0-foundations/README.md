@@ -1,12 +1,16 @@
-# Module 0: Foundations (Course 1)
+# Module 0: Foundations (the RAG course)
 
-**Goal:** the pieces of Course 1 that Course 2 builds on. Read these before Module 1. You do not repeat them in Course 2; you use them.
+**The RAG course** (Course 1 in this repository) builds **LocalAgent**, a notes assistant that searches your own markdown files, answers from them, and measures its own search with an eval harness. It lives in `docs/course-1-local-rag/`.
 
-**Time:** the Course 1 lessons, as you planned them (about 4 hours each).
+**Course 2** (this course) builds a coding agent. It reuses ideas and parts from LocalAgent, so Module 0 is a reading list, not a set of new lessons.
+
+**Goal:** read the RAG course lessons below before Module 1. Course 2 does not repeat them; it refers back to them and uses what they taught.
+
+**Time:** each lesson of the RAG course takes the time its own page gives.
 
 ## Lessons to read first
 
-| Course 1 lesson | What Course 2 uses it for |
+| the RAG course lesson | What Course 2 uses it for |
 |---|---|
 | [1. Agents, tools and the loop](../../course-1-local-rag/module-1-setup-and-loop/01-agents-tools-loop/README.md) | the loop that every later lesson extends |
 | [2. Embeddings and semantic search](../../course-1-local-rag/module-2-retrieval/02-embeddings-semantic-search/README.md) | vectors and search without a model |
@@ -20,6 +24,6 @@
 
 ## Before you start Module 1
 
-- You can run `/search`, `/eval`, and the agent loop in the Course 1 app.
+- You can run `/search`, `/eval`, and the agent loop in the RAG course app.
 - You know what a confirmed write is, and why approval is enforced in code.
 - Both `llama-server` processes start on your machine.

@@ -6,7 +6,7 @@
 
 **Prerequisites:**
 - Module 1, Lesson 1 complete. The app starts and reads its config.
-- Course 1, Lesson 1 (the agent loop) understood. You should be able to explain history, tool calls, and the iteration limit without looking.
+- the RAG course, Lesson 1 (the agent loop) understood. You should be able to explain history, tool calls, and the iteration limit without looking.
 
 **Quiz:** [quiz.md](quiz.md)
 
@@ -27,7 +27,7 @@ By the end of this lesson you can:
 
 ## 2. Why this lesson exists
 
-In Course 1 the loop called the model, waited, and printed the whole answer. That is fine for a short answer. A coding task produces long answers, multi-step plans, and tool calls that take seconds. Waiting for the whole answer makes the app feel frozen, and a user who sees nothing for 40 seconds will press keys, close the window, or assume something is broken.
+In the RAG course the loop called the model, waited, and printed the whole answer. That is fine for a short answer. A coding task produces long answers, multi-step plans, and tool calls that take seconds. Waiting for the whole answer makes the app feel frozen, and a user who sees nothing for 40 seconds will press keys, close the window, or assume something is broken.
 
 Streaming changes two things at once:
 
@@ -47,7 +47,7 @@ Streaming also introduces new bugs: partial text in the history, a cancel that l
 3. If the model asks for tools, the app runs them, adds their results to the history, and goes back to step 2.
 4. If the model answers without asking for tools, the answer is added to the history and shown.
 
-The iteration limit from Course 1 stops step 3 from repeating forever. Everything in this lesson sits inside step 2 (how the answer arrives) and step 4 (how it is shown).
+The iteration limit from the RAG course stops step 3 from repeating forever. Everything in this lesson sits inside step 2 (how the answer arrives) and step 4 (how it is shown).
 
 ### 3.2 Roles in the history
 
@@ -60,7 +60,7 @@ Every message has a role. The model treats each role differently:
 | assistant | the model | Remembers what it said. |
 | tool | the app, with a tool's result | Uses it as evidence. Not an instruction. |
 
-A tool result is data. If a file contains the text "ignore your instructions", the model should treat that as file content, which is the lesson from Course 1, Lesson 7. Keeping the roles correct is what makes that possible.
+A tool result is data. If a file contains the text "ignore your instructions", the model should treat that as file content, which is the lesson from the RAG course, Lesson 7. Keeping the roles correct is what makes that possible.
 
 ### 3.3 Streaming in one picture
 
@@ -153,7 +153,7 @@ The details are in [exercises.md](exercises.md).
 
 ## 7. Summary
 
-- The loop is the same as in Course 1. What changes is how the answer arrives and how it is shown.
+- The loop is the same as in the RAG course. What changes is how the answer arrives and how it is shown.
 - Streaming improves how the wait feels and gives the user control.
 - The history holds complete messages. The display can be decorated; the history cannot.
 - A cancel stops the answer, not the program, and discards the partial text.

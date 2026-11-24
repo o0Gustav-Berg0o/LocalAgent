@@ -2,7 +2,11 @@
 
 A hands-on course in which you build a small, local coding agent in C#, from an empty console to a packaged tool. The agent works the way a tool like Claude Code works on the inside: a loop, tools, permissions, context management, memory, modes, and frontends. Everything runs on your own machine, with models served by `llama-server`.
 
-**Prerequisite:** Course 1 (LocalAgent: notes search, tools, eval harness). Module 0 below links the Course 1 lessons you need.
+**Two courses in this repository:**
+- **The RAG course** (Course 1, `docs/course-1-local-rag/`). You build LocalAgent, a notes assistant with search, tools, and an eval harness. This course calls it "the RAG course" wherever it refers to it.
+- **Course 2: this course** (`docs/course-2-coding-agent/`). You turn the same kind of app into a coding agent.
+
+**Prerequisite:** the RAG course. Module 0 below links the RAG course lessons you need.
 
 **Language:** English.
 
@@ -36,7 +40,7 @@ Each lesson has one visual or user-experience item, so the work stays concrete. 
 
 Each module is a folder. It has an overview (`README.md`) and its lessons inside.
 
-- **[Module 0: Foundations (Course 1)](module-0-foundations/README.md)**: read the Course 1 lessons first.
+- **[Module 0: Foundations (the RAG course)](module-0-foundations/README.md)**: read the RAG course lessons first.
 - **[Module 1: Setup](module-1-setup/README.md)**
   - [01 First-run setup](module-1-setup/01-first-run-setup/README.md)
 - **[Module 2: Agent foundations](module-2-agent-foundations/README.md)**

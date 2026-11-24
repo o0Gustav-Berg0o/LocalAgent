@@ -17,10 +17,10 @@ Work in order. Each exercise ends with a **Checkpoint**.
 
 1. Search the app for any call that writes a file (`File.Write`, `WriteAllText`, `Move`, and similar).
 2. For each one, write whether it is behind the permission check, and whether it writes an existing file or creates a new one.
-3. The note-creation tool from Course 1 is one of them. Note how it asks for approval.
+3. The note-creation tool from the RAG course is one of them. Note how it asks for approval.
 
 **Observe**
-- The Course 1 note tool approves a whole new file with a title. What does that approval not tell the user, that a change to an existing file would?
+- The RAG course note tool approves a whole new file with a title. What does that approval not tell the user, that a change to an existing file would?
 
 **Checkpoint:** you have the list, with a yes or no for "behind the check" on each entry.
 
@@ -164,7 +164,7 @@ Work through this table. Record a result for each row.
 
 1. Which failure would a user notice first: a wrong diff, a changed file that was overwritten, or a missing folder that was created? Which is the worst?
 2. The fingerprint check refuses when the file changed. Is there a case where refusing is wrong? What would you change?
-3. Compare the note-creation approval from Course 1 with this approval. What does the user now see that they did not see before?
+3. Compare the note-creation approval from the RAG course with this approval. What does the user now see that they did not see before?
 
 ---
 

@@ -7,7 +7,7 @@
 **Prerequisites:**
 - Module 4, Lesson 10: the budget, the thresholds, and the refusal before sending.
 - Module 2, Lesson 2: the history holds complete messages only.
-- Course 1, Lesson 6: basic trimming and placeholder replacement, which compaction replaces.
+- the RAG course, Lesson 6: basic trimming and placeholder replacement, which compaction replaces.
 
 **Quiz:** [quiz.md](quiz.md)
 
@@ -31,7 +31,7 @@ By the end of this lesson you can:
 Lesson 10 shows the user when the window is full. Something has to happen next. There are three options, and they are not equal:
 
 - **Trimming** removes the oldest messages. It is cheap and simple, and it removes whatever was said first, even when it was the most important thing. A rule set at the start of a session disappears first.
-- **Placeholdering** replaces old tool results with a short note (Course 1, Lesson 6). It frees the largest part of the window, but it keeps the conversation's shape, and the model still knows that a file was read, just not what it said.
+- **Placeholdering** replaces old tool results with a short note (the RAG course, Lesson 6). It frees the largest part of the window, but it keeps the conversation's shape, and the model still knows that a file was read, just not what it said.
 - **Compaction** asks the model to summarise the older part of the conversation into a short, structured note, and keeps the recent part exactly as it was. It keeps the meaning of older turns at the cost of one model call and some accuracy.
 
 A good agent uses all three, in order of cost: placeholder first, then compact, and trim only as a last resort. This lesson builds the compaction step and the rules that decide between them.
@@ -94,7 +94,7 @@ Automatic compaction is a setting, and it is off by default. An unexpected summa
 
 ### 3.6 Placeholder before compaction
 
-Placeholdering (Course 1, Lesson 6) frees the most space for the least cost. Apply it first:
+Placeholdering (the RAG course, Lesson 6) frees the most space for the least cost. Apply it first:
 
 1. replace old tool results with a short placeholder,
 2. check the budget,

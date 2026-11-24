@@ -93,7 +93,7 @@ This is a deliberate trade. A hook that prompted every time would be ignored. A 
 
 ### 3.5 Hook output
 
-A hook's output can be long, and it can contain text that looks like instructions. Treat it as data (Course 1, Lesson 7), limit it to a set size, and show the last part when cutting, as in Lesson 9. The output appears in the turn where the event happened, so the user sees the check next to the change it checked.
+A hook's output can be long, and it can contain text that looks like instructions. Treat it as data (the RAG course, Lesson 7), limit it to a set size, and show the last part when cutting, as in Lesson 9. The output appears in the turn where the event happened, so the user sees the check next to the change it checked.
 
 ### 3.6 Hooks and the model
 

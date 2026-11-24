@@ -12,7 +12,7 @@
 
 ## Before you start
 
-- Module 0 read (Course 1).
+- Module 0 read (the RAG course).
 
 ## What you have at the end
 

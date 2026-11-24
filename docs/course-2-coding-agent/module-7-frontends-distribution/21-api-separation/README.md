@@ -7,7 +7,7 @@
 **Prerequisites:**
 - Module 2, Lessons 2 and 6: streaming, cancellation, and the single permission check.
 - Module 6, Lessons 18 and 20: hooks and external tools, which both need the core to report events.
-- Course 1, Lesson 10: the shared library, and why it was split.
+- the RAG course, Lesson 10: the shared library, and why it was split.
 
 **Quiz:** [quiz.md](quiz.md)
 
@@ -28,7 +28,7 @@ By the end of this lesson you can:
 
 ## 2. Why this lesson exists
 
-So far the console is the only frontend, and it is mixed into the code: the loop prints text, the permission prompt reads keys, the status line writes to a fixed place on the screen. That works for one console. It fails the moment another frontend is needed. A web page, a test that runs thousands of scripted questions, a Module 5 handoff that runs without a person, or the MCP server from Course 1, each would need a copy of the loop, or changes to the loop for their own display.
+So far the console is the only frontend, and it is mixed into the code: the loop prints text, the permission prompt reads keys, the status line writes to a fixed place on the screen. That works for one console. It fails the moment another frontend is needed. A web page, a test that runs thousands of scripted questions, a Module 5 handoff that runs without a person, or the MCP server from the RAG course, each would need a copy of the loop, or changes to the loop for their own display.
 
 Separation makes the core a library with a contract. The frontends use the contract. The core does not know which frontend is attached.
 

@@ -5,7 +5,7 @@
 **Time:** about 3 hours (60 min reading, 90 min lab, 30 min quiz and reflection).
 
 **Prerequisites:**
-- Course 1, Lesson 11: exposing tools as an MCP server. This lesson is the other side of it.
+- the RAG course, Lesson 11: exposing tools as an MCP server. This lesson is the other side of it.
 - Module 2, Lesson 6: permissions, which external tools must follow.
 - Module 3, Lesson 9: process lifecycle and the process tree.
 - Module 6, Lesson 16: a tool description is a prompt, and the model chooses by it.
@@ -150,7 +150,7 @@ The details are in [exercises.md](exercises.md).
 
 ## Sources
 
-- [McpServerToolAttribute](https://csharp.sdk.modelcontextprotocol.io/api/ModelContextProtocol.Server.McpServerToolAttribute.html): the `Name` property sets the tool name a client sees. Used in Course 1, Lesson 11 when the app is the server.
+- [McpServerToolAttribute](https://csharp.sdk.modelcontextprotocol.io/api/ModelContextProtocol.Server.McpServerToolAttribute.html): the `Name` property sets the tool name a client sees. Used in the RAG course, Lesson 11 when the app is the server.
 - The client side (listing tools, calling them) is described in the [C# SDK documentation](https://csharp.sdk.modelcontextprotocol.io/). Check the method names against the SDK version you use, since they have changed between versions.
 
 Continue to [exercises.md](exercises.md).

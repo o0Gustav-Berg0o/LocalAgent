@@ -1,10 +1,10 @@
 # Module 1, Lesson 1 — First-Run Setup
 
-**Time:** about 3 hours (60 min reading, 90 min lab, 20 min quiz and reflection). The lab is longer than in Course 1 because you are building something a real user will run on a machine you have not seen before.
+**Time:** about 3 hours (60 min reading, 90 min lab, 20 min quiz and reflection). The lab is longer than in the RAG course because you are building something a real user will run on a machine you have not seen before.
 
 **Prerequisites:**
-- Module 0 (Course 1) complete. You should be able to run `/search`, `/eval`, and the agent loop.
-- Both `llama-server` processes can start on your machine (Course 1, Lesson 0).
+- Module 0 (the RAG course) complete. You should be able to run `/search`, `/eval`, and the agent loop.
+- Both `llama-server` processes can start on your machine (the RAG course, Lesson 0).
 - You can read PowerShell output. You do not need to be a PowerShell expert.
 
 **Slides:** (to be added)
@@ -27,9 +27,9 @@ By the end of this lesson you can:
 
 ## 2. Why this lesson exists
 
-In Course 1, the models were already running when the program started. The endpoints, the model names, and the embedding dimensions were written directly into `Program.cs`. That works for one developer who knows their machine. It does not work for anyone else.
+In the RAG course, the models were already running when the program started. The endpoints, the model names, and the embedding dimensions were written directly into `Program.cs`. That works for one developer who knows their machine. It does not work for anyone else.
 
-A coding agent that people install on their own machines has three problems that Course 1 never had to solve:
+A coding agent that people install on their own machines has three problems that the RAG course never had to solve:
 
 - **The machine is unknown.** A laptop with 8 GB of RAM and no dedicated GPU behaves very differently from a desktop with 24 GB of VRAM. A model that runs well on one can be unusable on the other.
 - **The software is not installed.** The user may not have `llama-server`, or may have a build that does not match their GPU (a CPU-only build on a machine that should use CUDA, for example).

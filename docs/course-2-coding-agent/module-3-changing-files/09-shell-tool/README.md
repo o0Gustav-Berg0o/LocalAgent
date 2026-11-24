@@ -74,7 +74,7 @@ A timeout is a result, not a crash. The model receives "timed out after 120 seco
 
 ### 3.6 Output as data
 
-The output of a command is text. A command can print instructions, and a test output can contain a line that looks like a command. Treat the output as data (Course 1, Lesson 7), and limit its size. A failing build can print thousands of lines. Return the last part, which usually holds the error, and say how much was cut.
+The output of a command is text. A command can print instructions, and a test output can contain a line that looks like a command. Treat the output as data (the RAG course, Lesson 7), and limit its size. A failing build can print thousands of lines. Return the last part, which usually holds the error, and say how much was cut.
 
 ### 3.7 Exit codes
 

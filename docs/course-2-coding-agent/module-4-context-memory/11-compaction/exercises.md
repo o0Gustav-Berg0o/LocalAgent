@@ -33,7 +33,7 @@ Work in order. Each exercise ends with a **Checkpoint**.
 **Do**
 
 1. Create `Context/Placeholder.cs`. It replaces the content of tool results older than the most recent N turns (default 4) with a placeholder that says what was done: "[result of read_file on src/Program.cs, 300 lines, removed to save space]".
-2. Keep the call identifier in each replaced result (Course 1, Lesson 6 fixed this bug). The placeholder must still be a tool result, not plain text.
+2. Keep the call identifier in each replaced result (the RAG course, Lesson 6 fixed this bug). The placeholder must still be a tool result, not plain text.
 3. Make the function report how many characters it freed.
 4. Run it on the Exercise 0 history, and check the status line afterwards.
 

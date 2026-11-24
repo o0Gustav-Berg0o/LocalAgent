@@ -36,7 +36,7 @@ Work in order. Each exercise ends with a **Checkpoint**.
 **Do**
 
 1. Create `Settings/EffortLevel.cs` with an enum (`Low`, `Medium`, `High`) and one method that returns the limits for each level: maximum output tokens and maximum tool calls per question. Use the values from the README (512 and 2, 2048 and 4, 4096 and 8), in one place.
-2. Make the loop read these limits from the chosen effort, instead of from its own constants. The max tool calls replaces the iteration limit from Course 1 for this purpose.
+2. Make the loop read these limits from the chosen effort, instead of from its own constants. The max tool calls replaces the iteration limit from the RAG course for this purpose.
 3. Store the chosen effort in the config as a text value (`"low"`, `"medium"`, `"high"`). Parse it on load, and fall back to `medium` with a warning if the text is unknown.
 
 Here is the shape of the mapping. Keep it as a small, readable table in code:

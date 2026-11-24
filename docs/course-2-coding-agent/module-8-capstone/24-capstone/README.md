@@ -4,7 +4,7 @@
 
 **Time:** about 6 hours, over one or two sessions. This is the longest lesson in the course, because it asks you to measure what you built, not only to build it.
 
-**Prerequisites:** all lessons 1 to 23 of this course, and Course 1.
+**Prerequisites:** all lessons 1 to 23 of this course, and the RAG course.
 
 **Quiz:** [quiz.md](quiz.md)
 
@@ -27,7 +27,7 @@ By the end of this lesson you can:
 
 The course has taught many pieces: streaming, configuration, permissions, writes, undo, shell, context, memory, sessions, modes, skills, hooks, subagents, MCP, and packaging. Each piece was tested on its own. A capstone asks whether they work together, on a task nobody designed for them.
 
-The most important skill this lesson teaches is measurement. A coding agent is easy to demonstrate and hard to trust. An eval set, the same kind as Course 1's notes harness, turns "it seems to work" into a number that can go up or down. That number is what lets you change the agent with confidence, and what lets you tell a user what the agent can and cannot do.
+The most important skill this lesson teaches is measurement. A coding agent is easy to demonstrate and hard to trust. An eval set, the same kind as the RAG course's notes harness, turns "it seems to work" into a number that can go up or down. That number is what lets you change the agent with confidence, and what lets you tell a user what the agent can and cannot do.
 
 ---
 

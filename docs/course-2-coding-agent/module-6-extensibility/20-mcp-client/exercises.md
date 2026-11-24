@@ -4,7 +4,7 @@ Work in order. Each exercise ends with a **Checkpoint**.
 
 **Before you start**
 - Start from a clean git state, with Lesson 19 working.
-- Use the MCP server you built in Course 1, Lesson 11 as your test server. It exposes the notes tools, and you can run it from the command line. If it is not available, use the minimal server in the Preparation note below.
+- Use the MCP server you built in the RAG course, Lesson 11 as your test server. It exposes the notes tools, and you can run it from the command line. If it is not available, use the minimal server in the Preparation note below.
 - Start the chat `llama-server`.
 
 **Preparation note.** A minimal test server is a small program that offers one tool, `echo`, which returns its input. If you have no server, write this one first, in its own folder, as a learning exercise. Keep it outside the app.

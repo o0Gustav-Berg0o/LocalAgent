@@ -117,7 +117,7 @@ This course is local only. The provider interface could later support a remote A
 
 **4.4 A changed config while the app runs.** The app reads the config at start. If the user edits the file while the app runs, the change does nothing until restart. Either say so in the settings menu, or reload on request. Do not reload silently in the middle of an answer.
 
-**4.5 Two copies of one value.** The notes folder path appeared in three places in Course 1. After this lesson, check again with a search. Any copy left behind is a bug waiting to happen.
+**4.5 Two copies of one value.** The notes folder path appeared in three places in the RAG course. After this lesson, check again with a search. Any copy left behind is a bug waiting to happen.
 
 **4.6 Numbers in JSON are not strings.** A context size written as `"8192"` (with quotes) is a string, and a strict loader rejects it. Decide whether to accept both, and write the decision down.
 
