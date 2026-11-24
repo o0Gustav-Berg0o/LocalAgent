@@ -16,7 +16,7 @@
 ## Before you start
 
 - Module 2 complete (the loop, the provider, settings, and read tools).
-- Module 3, Lesson 09 (the shell output that fills the context fastest).
+- Module 3, Lesson 9 (the shell output that fills the context fastest).
 
 ## What you have at the end
 

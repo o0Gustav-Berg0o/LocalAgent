@@ -17,7 +17,7 @@
 ## Before you start
 
 - Module 5 complete.
-- Module 2, Lesson 06 (permissions) and Module 3, Lesson 09 (the process rules that hooks and servers reuse).
+- Module 2, Lesson 6 (permissions) and Module 3, Lesson 9 (the process rules that hooks and servers reuse).
 
 ## What you have at the end
 

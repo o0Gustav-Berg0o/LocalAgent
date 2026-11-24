@@ -26,6 +26,6 @@ Write your own answer to each question first, then compare with the answer key a
 
 ## Scoring
 
-- 6 or 7 correct: ready for Module 1, Lesson 2.
+- 6 or 7 correct: ready for Module 2, Lesson 2.
 - 4 or 5 correct: review the sections of the README that the missed questions point to, then re-do the Checkpoint in that exercise.
 - Fewer than 4: repeat Exercises 2 and 6 before moving on. Those two carry the most safety and data-quality risk.

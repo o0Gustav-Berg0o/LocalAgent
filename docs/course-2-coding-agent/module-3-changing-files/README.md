@@ -14,7 +14,7 @@
 
 ## Before you start
 
-- Module 2 complete, especially Lesson 06 (permissions) and Lesson 05 (resolved paths).
+- Module 2 complete, especially Lesson 6 (permissions) and Lesson 5 (resolved paths).
 
 ## What you have at the end
 
