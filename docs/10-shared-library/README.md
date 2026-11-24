@@ -89,7 +89,7 @@ If a step changes a number, undo that step and find out why. Do not continue on 
 
 | Stays the same | Changes |
 |---|---|
-| Search behavior, measured by `/eval` | Namespaces and `using` lines in the apps |
+| Search behavior, measured by `/eval` | Namespaces stay the same in this lesson (renaming is a later, optional step) |
 | The cache file format and location | Which project owns each file |
 | Tool descriptions (still prompts, still Lesson 5) | The build now has more than one project |
 
