@@ -21,7 +21,7 @@ Small local models (3–4B parameters) are far less forgiving of ambiguity than 
 |---|---|
 | Few tools | Every tool adds to the prompt and adds a chance the model picks wrong. Five tools is already a meaningful cognitive load for a 4B model. |
 | Few, required parameters | Optional parameters and enum lists invite small models to invent plausible-but-wrong values. |
-| Description says *when*, not just *what* | "Searches notes" tells the model nothing about when to use it versus `read_note`. "Use this first for any question about the user's notes" does. |
+| Description says *when*, not just *what* | "Searches notes" tells the model nothing about when to use it versus a second read-only tool. "Use this first for any question about the user's notes" does. |
 | English descriptions, even if answers are in another language | Small models are typically better at tool-calling in English regardless of the conversation's language. |
 | Return results with clear structure and source | The model should be able to cite exactly where something came from. |
 | Return errors as text, never let an exception escape | Covered in Lesson 1 — still applies, doubly so with unreliable argument generation from small models. |

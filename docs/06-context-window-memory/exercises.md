@@ -59,7 +59,13 @@ You'll be restarting the chat-model `llama-server` window (not the embedding one
        foreach (var msg in _history.Take(_history.Count - MaxHistoryMessages))
        {
            if (msg.Role == ChatRole.Tool)
-               msg.Contents = [new TextContent("[old result removed]")];
+           {
+               // Keep the CallId. The model matches each tool result to its request by this ID,
+               // so replacing the whole result with plain text breaks that link.
+               var old = msg.Contents.OfType<FunctionResultContent>().FirstOrDefault();
+               if (old is not null)
+                   msg.Contents = [new FunctionResultContent(old.CallId, "[old result removed]")];
+           }
        }
    }
    ```

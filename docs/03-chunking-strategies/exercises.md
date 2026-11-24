@@ -16,15 +16,19 @@ Both `llama-server` windows must still be running. All paths are relative to you
    ```csharp
    namespace LocalAgent.Rag;
 
-   public record Chunk2(string HeadingPath, string Text); // rename/merge with your Lesson 2 Chunk, which by now also carries a Vector and a Hash
+   // Use the Chunk record from Lesson 2, not a second record. By the end of this lesson it has these fields:
+   // SourceFile, Text, Vector, Hash, HeadingPath, FilePath. The chunker fills in Text, HeadingPath and FilePath;
+   // Vector and Hash stay empty here, and the indexer fills them in later (Lesson 3, Exercise 2).
+   // public record Chunk(string SourceFile, string Text, float[] Vector, string Hash, string HeadingPath, string FilePath);
 
    public static class MarkdownChunker
    {
-       public static List<Chunk2> Chunk(string fileName, string text, int maxChunkChars = 2000)
+       // filePath is the full path to the file. It is stored on every chunk, so the cache can tell files apart.
+       public static List<Chunk> Chunk(string fileName, string text, string filePath, int maxChunkChars = 2000)
        {
            var document = Markdig.Markdown.Parse(text); // parse once into a tree of top-level blocks
 
-           var chunks = new List<Chunk2>();
+           var chunks = new List<Chunk>();
 
            // The heading hierarchy we're currently nested under, e.g. [(1, "Setup"), (2, "Prerequisites")].
            // A level-2 heading replaces any previous level-2 (or deeper) entry, but keeps level-1 entries above it.
@@ -37,8 +41,11 @@ Both `llama-server` windows must still be running. All paths are relative to you
            void Flush()
            {
                if (buffer.Length == 0) return;
-               var path = string.Join(" > ", new[] { fileName }.Concat(headingStack.Select(h => h.Text)));
-               chunks.Add(new Chunk2(path, buffer.ToString().Trim()));
+               // Heading path: file name, then each heading we're nested under, joined with ">".
+               // Example: "lesson3.md>Setup>Prerequisites".
+               var path = string.Join(">", new[] { fileName }.Concat(headingStack.Select(h => h.Text)));
+               // Empty vector and hash for now; the indexer replaces them when it embeds the chunk.
+               chunks.Add(new Chunk(fileName, buffer.ToString().Trim(), Array.Empty<float>(), "", path, filePath));
                buffer.Clear();
            }
 
@@ -210,8 +217,28 @@ You now have two slash commands (`/search`, `/chunks`) as separate `if` blocks, 
 
 **Do**
 
-- [ ] **Update your Lesson 2 indexing loop** to chunk each file before embedding, instead of embedding the whole file as one chunk — embed `chunk.HeadingPath + "\n\n" + chunk.Text` for each chunk `MarkdownChunker.Chunk(...)` returns, and store the `HeadingPath` alongside the vector in your `VectorStore`. Placement: this is an in-place rewrite of the body of the `foreach` loop you wrote in Lesson 2 Exercise 1 (the one that currently does one `GenerateVectorAsync` + one `store.Add` per file) — you're changing what happens inside that loop, not adding a second loop next to it.
+- [ ] **Update your Lesson 2 indexing loop** to chunk each file before embedding, instead of embedding the whole file as one chunk — embed `chunk.HeadingPath + "\n\n" + chunk.Text` for each chunk `MarkdownChunker.Chunk(...)` returns, and store the `HeadingPath` alongside the vector in your `VectorStore`. Placement:
+
+   The loop body after the change (the `foreach` is yours from Lesson 2; this shows only what goes inside):
+   ```csharp
+   foreach (var chunk in MarkdownChunker.Chunk(fileName, text, path))
+   {
+       // Embed the heading path together with the text, so the heading helps the match.
+       var embedding = await embeddingGenerator.GenerateVectorAsync(chunk.HeadingPath + "\n\n" + chunk.Text);
+       store.Add(chunk with { Vector = embedding.ToArray() }); // keep HeadingPath on the chunk
+   }
+   ```
+   `with` makes a copy of the record with one field changed, so the chunk keeps its other fields.
+   Placement: this is an in-place rewrite of the body of the `foreach` loop you wrote in Lesson 2 Exercise 1 (the one that currently does one `GenerateVectorAsync` + one `store.Add` per file) — you're changing what happens inside that loop, not adding a second loop next to it.
 - [ ] **Add a `/reindex` command** that re-runs this whole process (simplest version: just clear the store and redo everything; you can add the change-detection skip-logic back once this works). Placement: with the checkpoint's command helper in place, this is one new `case "/reindex":` in `CommandHelper.HandleAsync` that calls a new private `ReindexAsync(ctx)` method — no change to the `while` loop. For `ReindexAsync` to re-run indexing, the indexing code can't stay inline in `Main`: move it into a method that returns a fresh `VectorStore` (e.g. `Indexer.BuildAsync(embeddings, notesFolder)`), call it from `Main` at startup, and call it again from `ReindexAsync`, assigning the result to `ctx.Store`.
+- [ ] Run `/reindex`, then run a handful of `/search` queries- [ ] Example of the `/reindex` case, for orientation:
+   ```csharp
+   case "/reindex":
+       // Build a fresh store from the notes folder and make it the current one.
+       context.Store = await Indexer.BuildAsync(context.Embeddings, context.NotesFolder);
+       break;
+   ```
+   The store is replaced in one assignment, so every later command sees the new data.
 - [ ] Run `/reindex`, then run a handful of `/search` queries against your notes and write down the top result's score for each.
 - [ ] **Temporarily remove the prefix** — change the embedded text to just `chunk.Text`, with no heading path — and run `/reindex` again.
 - [ ] Re-run the exact same `/search` queries.

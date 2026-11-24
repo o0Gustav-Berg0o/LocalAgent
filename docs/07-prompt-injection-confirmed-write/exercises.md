@@ -97,7 +97,13 @@ Both `llama-server` windows must still be running. All paths are relative to you
        }
    }
    ```
-- [ ] **Register `ProposeCreateNote`** as a tool in your tool list, and add a line to your system prompt: *"To create a note, call propose_create_note — never claim you created one without calling it."*
+- [ ] **Register `ProposeCreateNote`** as a tool in your tool list, with the snake_case name the prompt uses, and add a line to your system prompt: *"To create a note, call propose_create_note — never claim you created one without calling it."*
+   ```csharp
+   // Same pattern as search_notes in Lesson 4: the options set the name the model sees.
+   // The method stays PascalCase; the tool name is lowercase with underscores.
+   AIFunctionFactory.Create(noteTools.ProposeCreateNote, new AIFunctionFactoryOptions { Name = "propose_create_note" }),
+   ```
+   If the prompt and the registered name differ, the model may write the note text in its reply but never call the tool. Check the `[tool]` trace line to see which name it used.
 - [ ] `dotnet run`, ask the agent (in natural language) to create a note about something, confirm with `yes`, and check that the file exists on disk and that a `/search` for its content finds it.
 - [ ] Ask it to create another note, but type `no` (or anything other than `yes`) — verify the file was **not** written.
 

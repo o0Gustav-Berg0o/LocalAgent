@@ -41,9 +41,13 @@ Both `llama-server` windows must still be running. All paths are relative to you
    [
        AIFunctionFactory.Create(UtilityTools.GetDateTime),
        AIFunctionFactory.Create(UtilityTools.Calculate),
-       AIFunctionFactory.Create(noteTools.SearchNotes),
+       // By default the tool name is the C# method name ("SearchNotes"). The options below
+       // set the name the model sees to "search_notes": lowercase, words joined by underscores.
+       // The method stays PascalCase, as C# expects.
+       AIFunctionFactory.Create(noteTools.SearchNotes, new AIFunctionFactoryOptions { Name = "search_notes" }),
    ];
    ```
+   Every tool name in these lessons follows that rule. The system prompt below refers to `search_notes`, so the name must match exactly, or the model will not connect the prompt to the tool.
 - [ ] **Add a system prompt.** This is a new field inside `Agent/AgentLoop.cs` (not `Program.cs`) — add it as a `private static readonly` field on the `AgentLoop` class, alongside `_history` and `MaxToolIterations`. Then, inside `AskAsync`, prepend it to `_history` once, the first time the method runs (e.g. `if (_history.Count == 0) _history.Add(SystemPrompt);`, right before you add the user's message) — that way it's sent on every call without being duplicated on every turn:
    ```csharp
    private static readonly ChatMessage SystemPrompt = new(ChatRole.System, """
@@ -83,9 +87,14 @@ Both `llama-server` windows must still be running. All paths are relative to you
 - [ ] Ask about a topic you genuinely never wrote a note about. Does the model say it doesn't know, or does it confidently answer anyway from training data?
 - [ ] **Add a `MinScore` cutoff** inside `SearchNotes`, before building the result string:
    ```csharp
-   var relevant = hits.Where(h => h.Score >= 0.3f).ToList(); // tune this threshold against what you saw in Lesson 2
+   var relevant = hits.Where(h => h.Score >= 0.3f).ToList(); // tune this threshold against the scores you saw in Exercise 2
    if (relevant.Count == 0) return "No relevant passages found.";
+
+   // Build the returned text from `relevant`, not `hits`. If you keep `hits` here,
+   // the cutoff above is computed and then ignored, and weak matches still reach the model.
+   return string.Join("\n---\n", relevant.Select(h => $"[{h.Chunk.HeadingPath}] (score {h.Score:F2})\n{h.Chunk.Text}"));
    ```
+   Replace the existing `return string.Join(...)` line from Exercise 1 with this one. Keep only one return of the joined text.
 - [ ] Repeat the missing-topic question — `search_notes` should now explicitly report nothing relevant, rather than returning weak matches.
 - [ ] **Now soften the system prompt** on purpose: remove the "do not guess from your own training data" sentence, and ask the missing-topic question again.
 

@@ -9,6 +9,20 @@ Both `llama-server` windows from Lesson 0 must still be running. All file paths 
 **Do**
 
 - [ ] **Create a notes folder.** Inside your project root, create `samples/notes/` and write 5–10 short `.md` files about a topic you know well (so you can judge relevance yourself) — e.g. one file per subtopic, a few paragraphs each. You'll keep adding to this folder throughout the course.
+
+   Example of one note file, `samples/notes/sleep.md`. Write your own topic; this only shows the shape:
+   ```markdown
+   # Sleep and recovery
+
+   Most adults need seven to nine hours of sleep a night. Less than six hours over several weeks
+   reduces attention and slows reaction time, even when you do not feel tired.
+
+   ## Naps
+
+   A nap of 20 minutes or less improves alertness. A longer nap can leave you groggy for half an hour.
+   ```
+   Headings (`#`, `##`) matter later: the chunker uses them to split the file and to build the heading path.
+
 - [ ] **Add an embedding client.** In `Program.cs`, build a second client alongside your chat client, pointed at port 8081:
    ```csharp
    using Microsoft.Extensions.AI;

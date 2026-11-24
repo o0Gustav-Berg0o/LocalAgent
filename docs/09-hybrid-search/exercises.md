@@ -18,6 +18,14 @@ Both `llama-server` windows must still be running. All paths are relative to you
 - [ ] `/reindex`, then `/search WIFI_EVENT_STA_DISCONNECTED`.
 - [ ] **Add 2–3 questions using this identifier** to `eval/questions.json` from Lesson 8, with `esp32-wifi.md` as the expected source.
 
+   Example entries to add to the array in `eval/questions.json`. Add a comma after the last existing entry first:
+   ```json
+   { "question": "What event fires when the ESP32 loses its WiFi connection?", "expectedSources": ["esp32-wifi.md"] },
+   { "question": "What does WIFI_EVENT_STA_DISCONNECTED mean?", "expectedSources": ["esp32-wifi.md"] },
+   { "question": "Which function reconnects after a WiFi drop?", "expectedSources": ["esp32-wifi.md"] }
+   ```
+   The first question paraphrases the note, so vector search should find it. The second and third use the identifier and the function name, which is where BM25 should help.
+
 **Observe**
 - Does vector search rank the chunk containing the exact identifier where you'd expect, or does a topically-similar-but-wrong chunk (if you have one) outrank it? Look at the actual scores from `/search`, not just the top result.
 
@@ -37,6 +45,14 @@ Both `llama-server` windows must still be running. All paths are relative to you
            IReadOnlyList<string> documents, string query, double k1 = 1.5, double b = 0.75)
        {
            var tokenizedDocs = documents.Select(Tokenize).ToList();
+
+           // Average() throws on an empty list, so an empty notes folder would crash the command.
+           // Return an empty result instead, before any math runs.
+           if (tokenizedDocs.Count == 0)
+           {
+               return Array.Empty<(int Index, double Score)>();
+           }
+
            var avgLen = tokenizedDocs.Average(d => d.Count);
            var queryTerms = Tokenize(query);
            // Document frequency: how many documents contain each query term at all -- rarer
@@ -64,8 +80,12 @@ Both `llama-server` windows must still be running. All paths are relative to you
            return scores.OrderByDescending(s => s.Score).ToList();
        }
 
+       // Splits text into lowercase words. Each separator below matters for matching:
+       // - '`' (backtick): markdown code marks, so `WIFI_EVENT_STA_DISCONNECTED` becomes the plain word.
+       // - '\r': Windows line endings, so the last word of a line does not keep a hidden carriage return.
+       // - Forgetting these means an identifier in backticks never matches a plain query, and BM25 returns nothing.
        private static List<string> Tokenize(string text)
-           => text.ToLowerInvariant().Split([' ', '\n', '\t', '.', ',', '(', ')', ':', '"'],
+           => text.ToLowerInvariant().Split([' ', '\n', '\r', '\t', '.', ',', '(', ')', ':', '"', '`'],
                StringSplitOptions.RemoveEmptyEntries).ToList();
    }
    ```

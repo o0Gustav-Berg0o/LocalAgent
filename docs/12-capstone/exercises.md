@@ -15,6 +15,25 @@
    - A plain conversational question with no tool need (check: no spurious tool call).
 - [ ] Record the full trace output for this run — this is your evidence, not just a claim that it works.
 
+**Example: what the final tool list should look like**
+
+Your `Program.cs` should register every tool the course built, each with its snake_case name. Use this as a checklist, not as code to paste:
+
+```csharp
+AIFunction[] tools =
+[
+    // Utility tools from Lesson 1. The default name is the method name, which is fine here.
+    AIFunctionFactory.Create(UtilityTools.GetDateTime),
+    AIFunctionFactory.Create(UtilityTools.Calculate),
+
+    // Notes tools: names set explicitly, in snake_case, as the prompt expects (Lessons 4 and 7).
+    AIFunctionFactory.Create(noteTools.SearchNotes, new AIFunctionFactoryOptions { Name = "search_notes" }),
+    AIFunctionFactory.Create(noteTools.ProposeCreateNote, new AIFunctionFactoryOptions { Name = "propose_create_note" }),
+];
+```
+
+*Check your list against this:* every name the system prompt mentions must appear here, spelled the same way. A mismatch is the most common reason a tool never gets called.
+
 ## Exercise 2 — Written retrospective
 
 **Goal:** reflect critically, not just report completion.

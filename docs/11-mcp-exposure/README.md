@@ -6,7 +6,7 @@
 ## Learning objectives
 
 - Understand what MCP (Model Context Protocol) actually standardizes, and why.
-- Expose your existing tools (`search_notes`, `read_note`, `list_notes`) as an MCP server.
+- Expose your existing tools (`search_notes`) as an MCP server.
 - See another agent (not your own console app) use your tools.
 
 ## What MCP standardizes
@@ -27,6 +27,6 @@ This is the payoff of everything from Lesson 1: because you already separated "t
 
 ## What you'll build
 
-- An MCP server process exposing `search_notes`, `read_note`, and `list_notes` (read-only tools only — do **not** expose `create_note` over MCP without the same per-action confirmation guarantee from Lesson 7, and think hard about whether a remote caller should ever get write access at all).
+- An MCP server process exposing `search_notes` (read-only tools only — do **not** expose `create_note` over MCP without the same per-action confirmation guarantee from Lesson 7, and think hard about whether a remote caller should ever get write access at all).
 - A connection from an MCP-compatible client (e.g. Claude Desktop or Claude Code configured with your server) proving a *different* agent can now search your notes.
 - A short comparison write-up: what was reused unchanged from Lesson 4, and what had to change for the MCP transport.

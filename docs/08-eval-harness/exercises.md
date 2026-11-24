@@ -34,8 +34,14 @@ Both `llama-server` windows must still be running. All paths are relative to you
 
        foreach (var q in questions)
        {
-           var queryVector = (await ctx.Embeddings.GenerateVectorAsync($"Instruct: Given a question, retrieve relevant passages\nQuery:{q.Question}")).ToArray();
-           var hits = ctx.Store.TopK(queryVector, k: 6).Where(h => h.Score >= 0.3f).ToList();
+           // Use the same prefix method the agent uses, so /eval measures the same query text.
+           // Do not type the prefix out again: a copy can drift, as one did in our project.
+           var queryVector = (await ctx.Embeddings.GenerateVectorAsync(QueryTools.Prefix(q.Question))).ToArray();
+
+           // The same k and threshold as the agent. Keep them in one place (SearchSettings),
+           // so /eval and the agent cannot disagree.
+           var hits = ctx.Store.TopK(queryVector, SearchSettings.TopK)
+               .Where(h => h.Score >= SearchSettings.MinScore).ToList();
            var foundSources = hits.Select(h => h.Chunk.SourceFile).ToHashSet();
 
            // A question with an empty expectedSources is a "should find nothing" case -- it
@@ -64,6 +70,17 @@ Both `llama-server` windows must still be running. All paths are relative to you
 
 - [ ] Run `/eval` at your current settings and write down the recall@6 percentage.
 - [ ] **Change exactly one thing** — e.g. set `MaxChunkChars` to `500` in your `MarkdownChunker.Chunk` call — `/reindex`, then run `/eval` again.
+
+   The one change, as a single line in the chunker call. Change the default for this test only, and restore `2000` after:
+   ```csharp
+   var chunks = MarkdownChunker.Chunk(fileName, text, path, maxChunkChars: 500);
+   ```
+   Record the result in a small table, so the comparison is easy to read:
+   ```text
+   Setting             recall@6    Delta vs baseline
+   baseline (2000)     __ %        -
+   MaxChunkChars 500   __ %        __ points
+   ```
 - [ ] Write down the new recall@6 and the actual delta (not "it seemed better" — the number).
 - [ ] Repeat for at least one more change: try `k: 4` instead of `6` in `/eval`'s `TopK` call, or temporarily strip the heading-path prefix from indexing like you did in Lesson 3's Exercise 2, `/reindex`, and re-run `/eval`.
 

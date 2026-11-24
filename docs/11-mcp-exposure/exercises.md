@@ -67,11 +67,24 @@ This lesson's project is a **separate** console app from `LocalAgent` — create
    [McpServerToolType]
    public class NoteSearchMcpTool(NoteTools noteTools)
    {
-       [McpServerTool, Description("Search the user's own notes for passages relevant to a question. Always call this FIRST for any question that might be about the user's notes, before answering from your own knowledge.")]
+       // Name sets the tool name the client sees. Without it, the name would be "SearchNotes".
+       // Use the same snake_case name as in Lesson 4, so the prompt and the MCP client agree.
+       [McpServerTool(Name = "search_notes"), Description("Search the user's own notes for passages relevant to a question. Always call this FIRST for any question that might be about the user's notes, before answering from your own knowledge.")]
        public Task<string> SearchNotes(string query) => noteTools.SearchNotes(query);
    }
    ```
+   The method body only forwards the call. The search logic stays in `NoteTools`, which is the point of this exercise.
 - [ ] Register it with `.WithTools<NoteSearchMcpTool>()` alongside `PingTool`, index your notes folder at startup the same way `Program.cs` does in `LocalAgent`, and restart Claude Desktop.
+
+   The registration in the server's `Main`. Each `WithTools<T>()` call adds one class whose methods are marked with `[McpServerTool]`:
+   ```csharp
+   builder.Services
+       .AddMcpServer()
+       .WithStdioServerTransport()
+       .WithTools<PingTool>()
+       .WithTools<NoteSearchMcpTool>();
+   ```
+   The notes search needs a store before it can answer. Build it before `Build()`, the same way `Program.cs` does, and register it as a singleton so the tool class can receive it in its constructor. Once that is in place, restart Claude Desktop.
 - [ ] In Claude Desktop, ask a question that should trigger your `search_notes` tool and check that it returns real results from your notes.
 
 **Observe**

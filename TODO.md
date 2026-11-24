@@ -2,7 +2,7 @@
 
 Ideas and gaps discovered while building the reference implementation, to turn into
 guide material (a new lesson, a capstone extension, or a note added to an existing
-lesson) once the core 12 lessons are solid. Each entry notes what prompted it, not
+lesson) once the core 13 lessons (0 to 12) are solid. Each entry notes what prompted it, not
 just what it is, so the reasoning isn't lost by the time we act on it.
 
 - **"Robustness & Scaling" addendum — timeout handling + context compaction.**
