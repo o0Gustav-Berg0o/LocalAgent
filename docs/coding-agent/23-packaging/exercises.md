@@ -42,7 +42,19 @@ Work in order. Each exercise ends with a **Checkpoint**.
 
 **Do**
 
-1. Run the publish command with the Release configuration, a Windows 64-bit runtime identifier, the self-contained option, and the single-file option. Check the publishing documentation for your SDK version to confirm the exact option names before you run it.
+1. Run this command from the project folder (the path to the project file is the one argument you may need to change):
+
+   ```bash
+   dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+   ```
+
+   What each part does:
+   - `-c Release`: builds with optimisation, for release.
+   - `-r win-x64`: the runtime identifier, a 64-bit Windows target.
+   - `--self-contained true`: includes the .NET runtime, so the user installs nothing else.
+   - `-p:PublishSingleFile=true`: packs the output into one executable.
+
+   Check the single-file overview page (linked under Sources in the README) for your SDK version if a flag is rejected.
 2. Write the command you used in `RELEASE.md`, exactly as it was run.
 3. Note the size of the output file, and write it in the README as the cost of a self-contained build.
 

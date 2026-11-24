@@ -1,5 +1,7 @@
 # Module 6, Lesson 20 — External Tools: The MCP Client
 
+**Slides:** (to be added)
+
 **Time:** about 3 hours (60 min reading, 90 min lab, 30 min quiz and reflection).
 
 **Prerequisites:**
@@ -145,5 +147,10 @@ The details are in [exercises.md](exercises.md).
 - Descriptions are untrusted text; they are shown, checked, and cannot change the rules.
 - External calls have timeouts, output limits, and a per-question count.
 - Servers are configured by the user, and run as processes that must be stopped.
+
+## Sources
+
+- [McpServerToolAttribute](https://csharp.sdk.modelcontextprotocol.io/api/ModelContextProtocol.Server.McpServerToolAttribute.html): the `Name` property sets the tool name a client sees. Used in Course 1, Lesson 11 when the app is the server.
+- The client side (listing tools, calling them) is described in the [C# SDK documentation](https://csharp.sdk.modelcontextprotocol.io/). Check the method names against the SDK version you use, since they have changed between versions.
 
 Continue to [exercises.md](exercises.md).

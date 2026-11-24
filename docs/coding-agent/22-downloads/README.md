@@ -1,5 +1,7 @@
 # Module 7, Lesson 22 — Downloading Files Safely
 
+**Slides:** (to be added)
+
 **Time:** about 3 hours (60 min reading, 90 min lab, 30 min quiz and reflection).
 
 **Prerequisites:**

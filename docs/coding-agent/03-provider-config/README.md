@@ -1,5 +1,7 @@
 # Module 2, Lesson 3 — One Provider Interface and a Config File
 
+**Slides:** (to be added)
+
 **Time:** about 3 hours (60 min reading, 90 min lab, 30 min quiz and reflection).
 
 **Prerequisites:**
@@ -155,5 +157,9 @@ The details are in [exercises.md](exercises.md).
 - The context size exists in two places; the app and the server must agree.
 - Validation accepts, replaces with a default and warns, or reports. It never crashes.
 - Errors name the endpoint, the kind of failure, and the likely fix.
+
+## Sources
+
+- [llama.cpp server README (tools/server)](https://github.com/ggml-org/llama.cpp/blob/master/tools/server/README.md): the OpenAI-compatible routes, including `/v1/chat/completions`, `/v1/embeddings` and `/v1/models`. Third-party copies disagree on the default port, so check the upstream file for your build, and use the port you started the server with.
 
 Continue to [exercises.md](exercises.md).

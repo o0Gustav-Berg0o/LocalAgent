@@ -1,5 +1,7 @@
 # Module 2, Lesson 6 — Permissions: Allow, Ask, Deny
 
+**Slides:** (to be added)
+
 **Time:** about 3 hours (60 min reading, 90 min lab, 30 min quiz and reflection).
 
 **Prerequisites:**

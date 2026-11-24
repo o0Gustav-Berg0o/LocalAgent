@@ -1,5 +1,7 @@
 # Module 2, Lesson 2 — The Harness, Again: Streaming and Feedback
 
+**Slides:** (to be added)
+
 **Time:** about 3 hours (60 min reading, 90 min lab, 30 min quiz and reflection).
 
 **Prerequisites:**
@@ -156,5 +158,13 @@ The details are in [exercises.md](exercises.md).
 - The history holds complete messages. The display can be decorated; the history cannot.
 - A cancel stops the answer, not the program, and discards the partial text.
 - Two timing numbers per turn turn "it feels slow" into something you can measure.
+
+## Sources
+
+- [IChatClient.GetStreamingResponseAsync](https://learn.microsoft.com/en-us/dotnet/api/microsoft.extensions.ai.ichatclient.getstreamingresponseasync): the streaming call, which returns updates.
+- [ChatResponseUpdate](https://learn.microsoft.com/en-sg/dotnet/api/microsoft.extensions.ai.chatresponseupdate?view=net-9.0-pp): one piece of a streamed reply.
+- The `ToChatResponse` helper, which rebuilds a complete reply from the updates, is described on the [IChatClient documentation page](https://learn.microsoft.com/dotnet/ai/ichatclient).
+
+Some of these pages are labelled as preview versions. Check the signature in the package version your project uses.
 
 Continue to [exercises.md](exercises.md).

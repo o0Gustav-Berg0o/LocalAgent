@@ -1,5 +1,7 @@
 # Module 7, Lesson 23 — Packaging and First Run
 
+**Slides:** (to be added)
+
 **Time:** about 3 hours (60 min reading, 90 min lab, 30 min quiz and reflection).
 
 **Prerequisites:**
@@ -50,7 +52,7 @@ A release does not contain the model servers, the model files, the user's notes,
 
 A framework-dependent build needs the right .NET runtime already installed. A self-contained build includes the runtime, so the user installs nothing else. A single-file build packs the application into one executable.
 
-For a Windows release, a self-contained single-file build is the usual choice for a learning tool. The command has three parts: the configuration (Release), the target runtime (a Windows 64-bit identifier), and the flags that choose self-contained and single-file. The exact flags depend on the .NET version, so check the publishing documentation for the version you use before you rely on them.
+For a Windows release, a self-contained single-file build is the usual choice for a learning tool. The command in Exercise 2 has four parts: `-c Release` (the configuration), `-r win-x64` (the runtime identifier for 64-bit Windows), `--self-contained true` (include the runtime), and `-p:PublishSingleFile=true` (one executable). The single-file overview page lists the same settings and the caveats for each .NET version, and it is linked under Sources below.
 
 The size of a self-contained build is large, often tens of megabytes. That is the cost of not requiring a runtime. Say so in the README.
 
@@ -149,5 +151,10 @@ The details are in [exercises.md](exercises.md).
 - Build self-contained and single-file for a Windows release, and say what that costs in size.
 - Search for leaks before publishing: paths, keys, the sandbox, and debug switches.
 - The first run and the installation guide are tested on a clean machine by someone else.
+
+## Sources
+
+- [Single-file deployment overview](https://learn.microsoft.com/en-us/dotnet/core/deploying/single-file/overview): the single-file option, self-contained builds, and the caveats for each version.
+- [dotnet publish](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-publish): the command and its options.
 
 Continue to [exercises.md](exercises.md).

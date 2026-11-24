@@ -1,5 +1,7 @@
 # Module 7, Lesson 24 — Capstone: The Agent on a Sample Project, Measured
 
+**Slides:** (to be added)
+
 **Time:** about 6 hours, over one or two sessions. This is the longest lesson in the course, because it asks you to measure what you built, not only to build it.
 
 **Prerequisites:** all lessons 1 to 23 of this course, and Course 1.

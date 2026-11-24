@@ -1,5 +1,7 @@
 # Module 6, Lesson 18 — Hooks: Reliable Checks Around the Agent
 
+**Slides:** (to be added)
+
 **Time:** about 3 hours (60 min reading, 90 min lab, 30 min quiz and reflection).
 
 **Prerequisites:**
