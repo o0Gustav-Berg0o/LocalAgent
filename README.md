@@ -28,21 +28,15 @@ Each lesson's `README.md` also links to a **Google Slides deck** covering the sa
 
 ## Lesson map
 
-| # | Lesson | Core concept |
-|---|---|---|
-| 0 | [Setup & Orientation](docs/00-setup/README.md) | Environment, local model servers, running a reference app once |
-| 1 | [Agents, Tools & the Loop](docs/01-agents-tools-loop/README.md) | What an agent loop actually is |
-| 2 | [Embeddings & Semantic Search](docs/02-embeddings-semantic-search/README.md) | Vectors, cosine similarity, retrieval without an LLM |
-| 3 | [Chunking Strategies](docs/03-chunking-strategies/README.md) | How splitting documents determines what's findable |
-| 4 | [Retrieval, Grounding & Hallucination](docs/04-retrieval-grounding-hallucination/README.md) | Asymmetric search, citing sources, saying "I don't know" |
-| 5 | [Tool Design for Small Models](docs/05-tool-design-small-models/README.md) | Why tool descriptions are prompts too |
-| 6 | [Context Window & Memory](docs/06-context-window-memory/README.md) | The context window as a finite, shared resource |
-| 7 | [Prompt Injection & the Confirmed Write Tool](docs/07-prompt-injection-confirmed-write/README.md) | Treating document content as untrusted, human-in-the-loop writes |
-| 8 | [Measuring Quality: an Eval Harness](docs/08-eval-harness/README.md) | recall@k, and why "it feels right" isn't evaluation |
-| 9 | [Beyond Vectors: Hybrid Search](docs/09-hybrid-search/README.md) | BM25 + vector search combined with Reciprocal Rank Fusion |
-| 10 | [Separating the Core: a Shared Library](docs/10-shared-library/README.md) | Moving shared search code into a library both apps reference |
-| 11 | [Exposing Tools via MCP](docs/11-mcp-exposure/README.md) | Turning your tools into a reusable MCP server |
-| 12 | [Capstone & Retrospective](docs/12-capstone/README.md) | Put it all together, review your own build |
+The lessons are grouped into modules. Each module is a folder under `docs/course-1-local-rag/`, with its own overview. Lesson numbers are unchanged.
+
+| Module | Lessons |
+|---|---|
+| [Module 1: Setup and the loop](docs/course-1-local-rag/module-1-setup-and-loop/README.md) | 0 [Setup & Orientation](docs/course-1-local-rag/module-1-setup-and-loop/00-setup/README.md), 1 [Agents, Tools & the Loop](docs/course-1-local-rag/module-1-setup-and-loop/01-agents-tools-loop/README.md) |
+| [Module 2: Retrieval](docs/course-1-local-rag/module-2-retrieval/README.md) | 2 [Embeddings & Semantic Search](docs/course-1-local-rag/module-2-retrieval/02-embeddings-semantic-search/README.md), 3 [Chunking Strategies](docs/course-1-local-rag/module-2-retrieval/03-chunking-strategies/README.md), 4 [Retrieval, Grounding & Hallucination](docs/course-1-local-rag/module-2-retrieval/04-retrieval-grounding-hallucination/README.md), 9 [Beyond Vectors: Hybrid Search](docs/course-1-local-rag/module-2-retrieval/09-hybrid-search/README.md) |
+| [Module 3: Agent behaviour and safety](docs/course-1-local-rag/module-3-agent-behaviour/README.md) | 5 [Tool Design for Small Models](docs/course-1-local-rag/module-3-agent-behaviour/05-tool-design-small-models/README.md), 6 [Context Window & Memory](docs/course-1-local-rag/module-3-agent-behaviour/06-context-window-memory/README.md), 7 [Prompt Injection & the Confirmed Write Tool](docs/course-1-local-rag/module-3-agent-behaviour/07-prompt-injection-confirmed-write/README.md) |
+| [Module 4: Measuring and architecture](docs/course-1-local-rag/module-4-measuring-and-architecture/README.md) | 8 [Measuring Quality: an Eval Harness](docs/course-1-local-rag/module-4-measuring-and-architecture/08-eval-harness/README.md), 10 [Separating the Core: a Shared Library](docs/course-1-local-rag/module-4-measuring-and-architecture/10-shared-library/README.md), 11 [Exposing Tools via MCP](docs/course-1-local-rag/module-4-measuring-and-architecture/11-mcp-exposure/README.md) |
+| [Module 5: Capstone](docs/course-1-local-rag/module-5-capstone/README.md) | 12 [Capstone & Retrospective](docs/course-1-local-rag/module-5-capstone/12-capstone/README.md) |
 
 ## What you'll have built by the end
 
