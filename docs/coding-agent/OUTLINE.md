@@ -1,7 +1,7 @@
 # Course 2: Build a Local Coding Agent
 
 
-> **Status (final numbering):** the lessons are written. Their numbers match the folders: 01 setup, 02 to 06 Module 2, 07 to 09 Module 3, 10 to 13 Module 4, 14 to 15 Module 5, 16 to 20 Module 6, 21 to 23 Module 7, 24 capstone. Where this outline and the folders differ, the folders are the source of truth. Start at [README.md](README.md).
+> **Status (final numbering):** the lessons are written. Their numbers match the folders: 01 setup, 02 to 06 Module 2, 07 to 09 Module 3, 10 to 13 Module 4, 14 to 15 Module 5, 16 to 20 Module 6, 21 to 23 Module 7, 24 capstone. Where this outline and the folders differ, the folders are the source of truth. The lessons are inside module folders (`module-1-setup` to `module-8-capstone`). Start at [README.md](README.md).
 **Goal:** students build a small, local coding agent in C#, the way a tool like Claude Code works from the inside: a loop, tools, permissions, context management, memory, modes, and frontends.
 
 **Prerequisite:** Course 1 (LocalAgent: notes RAG, tools, eval harness).
