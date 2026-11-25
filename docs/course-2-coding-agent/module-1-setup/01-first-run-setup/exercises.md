@@ -9,6 +9,7 @@ Work through the exercises in order. Each one ends with a **Checkpoint**: a resu
 - Use PowerShell for every command in this lesson, unless a step says otherwise.
 
 **How the lab is laid out**
+- Exercise 0 records where the app stands, and moves the RAG code into the layout this course uses.
 - Exercises 1 to 3 are about **knowing**: what to scan, what to show, what to ask, and what to suggest.
 - Exercises 4 to 6 are about **storing and acting**: the config file, the install guidance, and the guarded download.
 - Exercises 7 to 9 are about **wiring and testing**: startup, the working folder, `/setup`, and the edge cases.
@@ -17,9 +18,11 @@ Work through the exercises in order. Each one ends with a **Checkpoint**: a resu
 
 ---
 
-## Exercise 0 — Establish the baseline
+## Exercise 0 — Establish the baseline, then move the RAG code
 
-**Goal:** know the current state of the app, so you can tell later what the setup changed.
+**Goal:** know the current state of the app, so you can tell later what the setup changed. Then put the code from the RAG course into the layout this course uses, before you add anything new.
+
+### Part A: record the current values
 
 **Why this matters:** in the RAG course, the endpoints and model names live in `Program.cs`. Before you move them into a config file, you need to know exactly what the app does now.
 
@@ -34,11 +37,12 @@ Work through the exercises in order. Each one ends with a **Checkpoint**: a resu
    - the chat model name
    - the embedding model name
    - the notes folder path (in this course it becomes the working folder, which is chosen at each start and never stored in the file; see Exercises 4 and 7)
+5. Run `/eval`, and write down the score. Part B must leave it unchanged.
 
 **Observe**
 - How many places hold each value? If a value appears in more than one place, it is a candidate for the config file, and a candidate for a bug.
 
-**Checkpoint:** you have a table with five values and their line numbers. Keep the table; you will refer to it in Exercise 4.
+**Checkpoint:** you have the `/eval` score, and a table with five values and their line numbers. Keep both; Part B uses the score, and Exercise 4 uses the table.
 
 ```text
 Value                 Where it is now (file:line)     Current value
@@ -48,6 +52,36 @@ chat model            Program.cs:__                   ...
 embedding model       Program.cs:__                   ...
 notes folder          Program.cs:__ and CommandHelper __
 ```
+
+### Part B: put the RAG code in slices
+
+**Why this matters:** the RAG app has one feature, answering from your notes, so folders by role (`Tools/`, `Helpers/`) were enough. This course adds about twenty features, organised as slices (README section 3.10). Moving the existing code first means every lesson after this one adds to a tree that already has one shape. This is a move, not a rewrite: the same method as the RAG course, Lesson 10.
+
+**Do**
+
+1. Move the files with this table. Your file names may differ a little from the RAG course's; match them by what they do.
+
+| From (RAG course) | To | Why |
+|---|---|---|
+| `Agent/AgentLoop.cs` | stays in `Agent/` | the loop wires the slices together |
+| `Tools/NoteTools.cs` or `Helpers/NoteTool.cs` | `Features/Notes/` | the notes tools are one feature |
+| `Tools/UtilityTools.cs` | `Features/Utility/` | the date and calculator tools |
+| `Helpers/CommandHelper.cs` and `Helpers/CommandContext.cs` | `Shared/Commands/` | every slice's commands go through it (Exercise 7) |
+| a settings class such as `SearchSettings`, if you made one | `Shared/Config/` | config records live in one place |
+| `EvalQuestion`, if it has a file of its own | `Features/Eval/` | the eval set is a feature of its own |
+| `LocalAgent.Core/` and the MCP server from Lesson 11 | stay as they are | they are separate projects already |
+
+2. For a file the table does not list, ask which feature it serves. One feature: that slice. Two or more, or the loop: `Shared/`.
+3. Change each moved file's namespace to match its folder, for example `LocalAgent.Features.Notes`. Then fix the `using` lines in `Program.cs` and wherever else the build complains. Some IDEs do this for a whole project; in Visual Studio it is called Sync Namespaces.
+4. Move one folder at a time, and build after each move. Change nothing else: no renames, no fixes. A move that also fixes something hides both.
+5. Run `/eval` again.
+
+**Read this carefully.** The RAG commands (`/search`, `/reindex`, `/eval`) and the `record EvalQuestion` at the bottom of `CommandHelper.cs` move with `CommandHelper` for now. Splitting them into the Notes and Eval slices changes code, not only its place, so it is a stretch task at the end of this lab.
+
+**Checkpoint**
+- `Helpers/` and `Tools/` are gone.
+- The app builds, and a notes question gives the same first `[tool]` line as in Part A.
+- `/eval` gives the same score as in Part A.
 
 ---
 
@@ -998,6 +1032,7 @@ Answer these in writing. There are no right answers, but there are weak ones: a 
 - Add a `--non-interactive` mode that reads answers from a file and never asks. How would it handle the download consent step? Should it ever download without a yes?
 - Add a scan result cache, valid for one day, and a `/setup --rescan` to force a new scan. What must the cache never contain? What happens to a value the user corrected?
 - Write a test that runs the whole wizard with scripted answers and a fake download server. Which parts can you test without a real network?
+- Turn the RAG commands (`/search`, `/reindex`, `/eval`) into `ISlashCommand` classes in `Features/Notes/` and `Features/Eval/`, as in Exercise 7, and remove their cases from `CommandHelper`. Move `EvalQuestion` to `Features/Eval/` at the same time. Check `/eval` before and after.
 
 ---
 

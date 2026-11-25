@@ -30,3 +30,11 @@ This lesson has no new concept. It's where you step back and look at the whole t
 - A full run-through demo: start from a clean index, ask a sequence of questions that exercises retrieval, grounding, a tool call, and (with confirmation) a note creation — in one sitting, narrating what's happening at each step as if teaching someone else.
 - A written retrospective, using the review template below, covering what surprised you, what you'd change, and what's still weak.
 - A short list of next steps if you kept extending this (reranking, a real vector database, OpenTelemetry, summarization-based history management — all mentioned as extension points throughout the earlier lessons but deliberately left undone here).
+
+## Looking ahead: two ways to organise code
+
+Your app is organised by role: `Rag/` and `Indexing/` for the pipeline, `Tools/` for what the model can call, `Helpers/` for the console commands. That fits this app. It has one feature, answering from your notes, and the folders follow the steps of one pipeline.
+
+The other way is by feature, often called vertical slices: one folder per feature, holding everything that feature needs, plus a shared folder for what several features use. It pays off when an app has many features that change independently. The coding-agent course (Course 2) adds about twenty, so it switches to slices in its first lesson. Its first exercise moves this app's code into the new layout, with the same move-build-compare method you used in Lesson 10.
+
+A question for your retrospective: if you added ten more features to this app, which folder would get crowded first, and which files would you have to open for each new feature?

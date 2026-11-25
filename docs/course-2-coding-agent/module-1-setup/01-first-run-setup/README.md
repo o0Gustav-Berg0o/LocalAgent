@@ -204,18 +204,18 @@ The scan is an estimate of the machine. Some values are wrong (section 5.1), and
 
 ### 3.10 Where the code goes
 
-From this lesson on, the app is organised by feature, not by kind of code. Each feature is a folder under `Features/`, called a slice, and most lessons add one. A lesson's code sits in one place, so you can read it, review it, and undo it as one piece.
+From this lesson on, the app is organised by feature, not by kind of code. Each feature is a folder under `Features/`, called a slice, and most lessons add one. A lesson's code sits in one place, so you can read it, review it, and undo it as one piece. Exercise 0 moves the code from the RAG course into this layout first, so the whole app has one shape.
 
 ```text
 LocalAgent/                 the console app from the RAG course
   Agent/                    the loop from the RAG course. It wires the slices together.
-  Helpers/                  CommandHelper and the other RAG helpers, unchanged
   Features/
+    Notes/  Utility/  Eval/ from the RAG course, moved in Exercise 0
     FirstRun/               this lesson: scan, verify screen, suggestion, install guide, wizard
     Workspace/              this lesson: the working folder and the recent folders
     Settings/  ReadFiles/  Permissions/  FileChanges/  Shell/  Context/  ProjectMemory/
     Sessions/  Cowork/  Handoff/  Skills/  CustomCommands/  Hooks/  Subagents/  Mcp/  Fetch/
-  Shared/                   code that two or more slices use, such as Config/ and Download/
+  Shared/                   code that two or more slices use: Commands/ (CommandHelper), Config/, ...
   Program.cs                builds everything, and registers the slash commands
 LocalAgent.Core/            from the RAG course: search, indexer, vector store
 ```

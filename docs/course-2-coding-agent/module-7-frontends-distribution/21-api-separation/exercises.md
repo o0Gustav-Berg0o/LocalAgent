@@ -160,14 +160,14 @@ A `TaskCompletionSource<string>` per open request, kept in a dictionary by id, i
 
 ## Exercise 4 — Move the slices into the core
 
-**Goal:** every logic file is in `LocalAgent.Core`, in the same folder and namespace as before. The console app keeps `Program.cs`, `Helpers/`, and the screen files.
+**Goal:** every logic file is in `LocalAgent.Core`, in the same folder and namespace as before. The console app keeps `Program.cs`, `Shared/Commands/` (the slash-command dispatch), and the screen files.
 
 **Background:** the layout from Module 1, Lesson 1, section 3.10 was chosen for this exercise. Logic files never called `Console`, so they move as they are. This is the refactor from the RAG course, Lesson 10, again, with the same method: move, build, compare.
 
 **Do**
 
 1. Record the baseline: run `/eval`, and keep the numbers.
-2. Move `Shared/` first, except its screen files (`Shared/Prompts/`, `Shared/Download/DownloadConsentPrompt.cs`, and `Shared/OutputStyle.cs`). Keep each file's folder and namespace. Build, run `/eval`, compare.
+2. Move `Shared/` first, except the parts that belong to the console: `Shared/Commands/` (typed slash commands are console input), `Shared/Prompts/`, `Shared/Download/DownloadConsentPrompt.cs`, and `Shared/OutputStyle.cs`. Keep each file's folder and namespace. Build, run `/eval`, compare.
 3. Move `Agent/`, the loop, which has no `Console` call left after Exercise 2. Build, compare.
 4. Move one slice at a time, in lesson order. The logic files go to `LocalAgent.Core/Features/<slice>/`. The files whose names end in `Screen`, `Prompt`, `Menu`, `Wizard`, or `Command` stay in `LocalAgent/Features/<slice>/`. Build and compare after each slice.
 5. A logic file that does not build in the core still knows the console. Do not add a console reference to the core to make it build. Split the file into a logic part and a screen part, and write its name in your notes.
@@ -177,7 +177,7 @@ A `TaskCompletionSource<string>` per open request, kept in a dictionary by id, i
 
 **Checkpoint**
 - A search of `LocalAgent.Core` for `Console.` finds nothing.
-- Under `LocalAgent/Features/` and `LocalAgent/Shared/`, every file name ends in `Screen`, `Prompt`, `Menu`, `Wizard`, or `Command`, apart from `OutputStyle`.
+- Under `LocalAgent/Features/` and `LocalAgent/Shared/`, every file name ends in `Screen`, `Prompt`, `Menu`, `Wizard`, or `Command`, apart from `OutputStyle` and the dispatch files in `Shared/Commands/`.
 - `/eval` gives the same numbers as the baseline.
 - Your notes list every file you had to split, and why.
 
