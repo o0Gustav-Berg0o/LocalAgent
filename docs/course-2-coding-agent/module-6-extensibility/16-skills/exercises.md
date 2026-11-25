@@ -3,6 +3,7 @@
 Work in order. Each exercise ends with a **Checkpoint**.
 
 **Before you start**
+- **Where the code goes:** `Features/Skills/`.
 - Start from a clean git state, with Module 5 working.
 - Create a skills folder in the sandbox project, separate from the app's code: `sandbox\skills\`.
 - Start the chat `llama-server`.
@@ -46,10 +47,35 @@ Work in order. Each exercise ends with a **Checkpoint**.
 
 **Do**
 
-1. Create `Skills/SkillIndex.cs` that scans the skills folder, reads the header of each `SKILL.md` (the lines between the two dash lines), and builds a list of name and description.
+1. Create `Features/Skills/SkillIndex.cs` that scans the skills folder, reads the header of each `SKILL.md` (the lines between the two dash lines), and builds a list of name and description.
 2. Add the index to the system prompt under the heading "Available skills", with one line per skill: the name, a colon, and the description.
 3. Use the meter to measure the index's cost. Compare it with the cost from Exercise 0.
 4. Make the reader skip any skill whose header is missing a field, and warn with the folder name.
+
+Start from this shell. Exercise 5 adds the project folder and the limits:
+
+```csharp
+namespace LocalAgent.Features.Skills;
+
+public record SkillEntry(string Name, string Description, string SkillFilePath, bool ProjectOverride);
+
+public static class SkillIndex
+{
+    // Reads only the header of each SKILL.md: the lines between the first two "---" lines.
+    // Never reads a body. A header without name or description is skipped, with a warning.
+    public static (IReadOnlyDictionary<string, SkillEntry> Index, IReadOnlyList<string> Warnings) Build(
+        string skillsFolder)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+
+    // "Available skills", then one line per skill: "name: description".
+    public static string ToPromptBlock(IReadOnlyDictionary<string, SkillEntry> index)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Read this carefully.** The reader reads only the header, not the body. Reading bodies on every request would defeat the purpose. Test this by putting an unreadable character in a body: the index must still build.
 
@@ -66,10 +92,31 @@ Work in order. Each exercise ends with a **Checkpoint**.
 
 **Do**
 
-1. Create `Skills/LoadSkillTool.cs`. Its input is a skill name. It looks the name up in the index, and returns the body text.
+1. Create `Features/Skills/LoadSkillTool.cs`. Its input is a skill name. It looks the name up in the index, and returns the body text.
 2. Refuse a name not in the index. The refusal lists the valid names, so the model can correct itself.
 3. Load each skill at most once per session. A second request returns "skill X is already loaded earlier in this session".
 4. Limit the body to the size limit (8 KB), and say so if it is cut.
+
+Start from this shell:
+
+```csharp
+using System.ComponentModel;
+
+namespace LocalAgent.Features.Skills;
+
+public sealed class LoadSkillTool(IReadOnlyDictionary<string, SkillEntry> index, int maxBodyBytes = 8 * 1024)
+{
+    private readonly HashSet<string> _loadedThisSession = new(StringComparer.OrdinalIgnoreCase);
+
+    [Description("Loads the full instructions of one skill from the Available skills list, by name.")]
+    public string LoadSkill([Description("A skill name from the Available skills list.")] string name)
+    {
+        // 1. The lookup below. 2. Already loaded: say so (step 3).
+        // 3. Read the body: the text after the header. Cut at maxBodyBytes, and say so.
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 Here is the shape of the check. Keep the lookup in one place:
 

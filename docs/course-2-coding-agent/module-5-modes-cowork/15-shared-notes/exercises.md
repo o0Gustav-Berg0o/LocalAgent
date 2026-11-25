@@ -3,6 +3,7 @@
 Work in order. Each exercise ends with a **Checkpoint**.
 
 **Before you start**
+- **Where the code goes:** `Features/Handoff/`. It reads session events from `Shared/Sessions/`.
 - Start from a clean git state, with Lesson 14 working.
 - Use the sandbox project. You will write notes and a handoff there.
 - Start the chat `llama-server`.
@@ -30,8 +31,27 @@ Work in order. Each exercise ends with a **Checkpoint**.
 **Do**
 
 1. In the sandbox project root, create `NOTES.md` with three lines: a goal, a constraint, and a question to answer later.
-2. Create `Handoff/NotesReader.cs` that reads `NOTES.md` once at session start, if it exists, and adds it to the system prompt under the heading "Notes from the user".
+2. Create `Features/Handoff/NotesReader.cs` that reads `NOTES.md` once at session start, if it exists, and adds it to the system prompt under the heading "Notes from the user".
 3. Make the reader handle a missing file without an error, and a file over a size limit (use the memory limit from Lesson 12) by warning and loading the first part only.
+
+Start from this shell. It is close to `ProjectInstructions` from Lesson 12. If you share code between the two, the shared part goes in `Shared/`, because one slice does not use another:
+
+```csharp
+namespace LocalAgent.Features.Handoff;
+
+public static class NotesReader
+{
+    public const string FileName = "NOTES.md";
+
+    // Reads NOTES.md from the working folder once, at session start. Missing file: (null, null).
+    // Over maxTokens: the first part that fits, and a warning. The text goes in the prompt
+    // under "Notes from the user", as data, not as rules (Exercise 2).
+    public static (string? Text, string? Warning) Load(string workingFolder, int maxTokens)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Read this carefully.** The notes are added to the prompt, so they cost tokens, and they count in the budget (Lesson 10). A notes file that grows without limit is the same risk as memory that grows without limit.
 
@@ -63,10 +83,41 @@ Work in order. Each exercise ends with a **Checkpoint**.
 
 **Do**
 
-1. Create `Handoff/HandoffWriter.cs`. It writes `HANDOFF.md` with five sections: Done, Not done, Decisions, Questions, Checks.
+1. Create `Features/Handoff/HandoffWriter.cs`. It writes `HANDOFF.md` with five sections: Done, Not done, Decisions, Questions, Checks.
 2. Fill each section from the session's record (the session file from Lesson 13, and the checkpoints from Lesson 14), not from the model's memory of the session. The model may write the prose, but the lists come from the record.
 3. For each item in Done, include the file name and the checkpoint identifier, if there is one.
 4. For each check, include the command and its exit code, from the shell record.
+
+Start from this shell:
+
+```csharp
+namespace LocalAgent.Features.Handoff;
+
+public record DoneItem(string File, string? CheckpointId);
+public record CheckItem(string Command, int? ExitCode);
+
+// The lists come from the record. Only Decisions and Questions may come from the model's prose.
+// Not named Handoff: a type with the same name as its namespace causes lookup errors.
+public record HandoffReport(IReadOnlyList<DoneItem> Done, IReadOnlyList<string> NotDone,
+    IReadOnlyList<string> Decisions, IReadOnlyList<string> Questions, IReadOnlyList<CheckItem> Checks);
+
+public static class HandoffWriter
+{
+    // Done from the approved writes and the checkpoints, Checks from the shell results.
+    // NotDone is openSteps: the text of the plan steps not marked done, passed in by the loop,
+    // so this slice does not use the cowork slice. Reads the session events (Lesson 13).
+    public static HandoffReport FromRecord(IReadOnlyList<SessionEvent> events, IReadOnlyList<string> openSteps)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+
+    // Writes HANDOFF.md with the five headings, in order. "nothing changed" when Done is empty.
+    public static void Write(string workingFolder, HandoffReport report)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Read this carefully.** A handoff written from the model's recollection can claim work that was never done. A handoff written from the record can only claim what the record shows. This is the difference between a claim and a fact.
 
@@ -83,6 +134,23 @@ Work in order. Each exercise ends with a **Checkpoint**.
 1. Add a check that runs after the handoff is written. For each file named under Done, check that the file exists and has changed since the session started (compare the fingerprint with the record).
 2. For each check under Checks, check that the command appears in the shell record with that exit code.
 3. Mark any claim that fails the check, with the word "unverified", and print a warning.
+
+Start from this shell:
+
+```csharp
+namespace LocalAgent.Features.Handoff;
+
+public static class HandoffChecker
+{
+    // Reads HANDOFF.md as written on disk, so a hand edit is checked too. Returns one line per
+    // claim the record does not support: a Done file that did not change since the session
+    // started, or a Check whose command and exit code are not in the shell record.
+    public static IReadOnlyList<string> FindUnverified(string handoffPath, IReadOnlyList<SessionEvent> events)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Checkpoint:** edit the handoff by hand to add a file that was never changed. Run the check. The claim is marked unverified.
 

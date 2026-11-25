@@ -3,6 +3,7 @@
 Work in order. Each exercise ends with a **Checkpoint**.
 
 **Before you start**
+- **Where the code goes:** `Features/Shell/` for the allowlist and the shell tool. `CommandRunner` and `CommandResult` go in `Shared/Processes/`, because project memory (Lesson 12) and hooks (Lesson 18) run programs too. The config records go in `Shared/Config/`.
 - Commit the sandbox project. Install a tool you can build and test with in the sandbox, such as a small .NET console project with one test.
 - Use a test command that hangs on purpose for Exercise 3. Create a tiny script that sleeps for 300 seconds, for testing only, and never add it to the allowlist.
 - Start the chat `llama-server`.
@@ -46,6 +47,32 @@ Here is one entry, as it might appear in the file:
 
 4. Validate the section on load. Refuse an entry whose program contains a path separator (Gotcha 4.4), and warn about an empty pattern list.
 
+The section as C# records. They go in `Shared/Config/`, next to `AppConfig`, because the config file is read in one place:
+
+```csharp
+namespace LocalAgent.Shared.Config;
+
+public record ShellEntry(string Program, string[] AllowedArguments, int? TimeoutSeconds, string Description);
+
+public record ShellConfig(ShellEntry[] Entries, int DefaultTimeoutSeconds, int DefaultOutputLimitBytes);
+```
+
+The matcher, in `Features/Shell/AllowList.cs`:
+
+```csharp
+namespace LocalAgent.Features.Shell;
+
+public static class AllowList
+{
+    // True only when the program matches and the whole argument list equals one allowed pattern,
+    // split on spaces. "build" must not match "build-server" (the near-miss below).
+    public static bool Matches(ShellEntry entry, string program, IReadOnlyList<string> arguments)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
+
 **Read this carefully.** Patterns must match whole arguments. `build` allows `dotnet build`, but must not allow `dotnet build-server`. Write a rule for matching, and test the near-miss.
 
 **Checkpoint:** the config loads with the three entries, and a bad entry produces a warning and is ignored.
@@ -58,13 +85,33 @@ Here is one entry, as it might appear in the file:
 
 **Do**
 
-1. Create `Tools/Shell/CommandRunner.cs`. It takes the program, the list of arguments, the working directory, and the timeout.
+1. Create `Shared/Processes/CommandRunner.cs`. It takes the program, the list of arguments, the working directory, and the timeout.
 2. Build a `ProcessStartInfo` with the program and each argument added separately. Do not join the arguments into one string.
 3. Set the working directory to a folder inside the project root, checked with the path rule of Lesson 5.
 4. Clear the environment, then copy only the variables you decided on (the system path, the user profile, and the language settings). Write the list in a comment.
 5. Redirect standard output and standard error, and read them with the output encoding set to UTF-8.
 
-Here is the shape of the start-up. The details are yours:
+Start from this shell. Exercises 3 and 7 fill in the timeout and the cancel:
+
+```csharp
+using System.Diagnostics;
+using System.Text;
+
+namespace LocalAgent.Shared.Processes;
+
+public sealed class CommandRunner(IReadOnlyList<string> allowedEnvironmentVariables)
+{
+    // Runs one program with an argument list, in a folder inside the project root.
+    // Never throws for a failed command: the result says what happened (Exercise 4).
+    public Task<CommandResult> RunAsync(string program, IReadOnlyList<string> arguments,
+        string workingDirectory, TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
+
+Here is the shape of the start-up inside `RunAsync`. The details are yours:
 
 ```csharp
 var info = new ProcessStartInfo
@@ -95,7 +142,7 @@ info.Environment.Clear();
 **Do**
 
 1. Start the process and wait for it with the timeout. If the timeout passes, stop the process tree, not only the process.
-2. Use a method that stops child processes too. On Windows, one way is to run the taskkill command with the tree flag against the process identifier. Check the exact flags for your Windows version before you rely on them.
+2. Use a method that stops child processes too. In .NET, `Process.Kill(entireProcessTree: true)` does this without a second program. The command-line alternative on Windows is `taskkill` with the tree flag against the process identifier; check its flags for your Windows version before you rely on them.
 3. Return a result that says "timed out after N seconds" and includes any output read so far.
 4. Test with the hanging script from the preparation. After the timeout, check that no child of the script is still running.
 
@@ -113,10 +160,27 @@ info.Environment.Clear();
 
 **Do**
 
-1. Create `Tools/Shell/CommandResult.cs` with a method that formats: the command as it was run, the exit code, the duration, and the output.
+1. Create `Shared/Processes/CommandResult.cs` with a method that formats: the command as it was run, the exit code, the duration, and the output.
 2. Limit the output to the configured size. When cutting, keep the last part, because errors are usually at the end, and say how many bytes were cut.
 3. Combine standard output and standard error in the order they arrived, or show them in two labelled blocks. Pick one and write why.
 4. Never show the environment in the result.
+
+Start from this shell:
+
+```csharp
+namespace LocalAgent.Shared.Processes;
+
+// ExitCode is null when the command timed out or was cancelled; Status then says which.
+public record CommandResult(string CommandLine, int? ExitCode, string Status, TimeSpan Duration, string Output)
+{
+    // The text the model reads: the command, the exit code or status, the duration, and the output.
+    // Output over limitBytes keeps the last part, with a line that says how many bytes were cut.
+    public string ToModelText(int limitBytes)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Read this carefully.** Keeping the end of the output is a choice. A compiler error is often the last line, and a model that sees only the first 2000 lines of a 50,000-line build will not see the error at all.
 
@@ -134,6 +198,18 @@ info.Environment.Clear();
 2. Write the mapping: an entry in the allowlist that matches becomes an **allow** rule for that command pattern. Anything that does not match becomes an **ask** rule by default, and a deny rule can be added in the config.
 3. Make sure the match uses the whole command, not only the program name. `dotnet build` and `dotnet publish` are different targets.
 4. Show the ask prompt for an unlisted command, with the program and the full argument list shown in plain words.
+
+The mapping, in `AllowList`:
+
+```csharp
+// One allow rule per entry and pattern, for the shell tool, with the whole command as the
+// target, for example "dotnet build". The permission engine does the rest (Lesson 6).
+// Unlisted commands match no rule, so they fall to the default: ask.
+public static IReadOnlyList<Rule> ToRules(ShellConfig config, string shellToolName)
+{
+    throw new NotImplementedException(); // students write this
+}
+```
 
 **Read this carefully.** The mapping has a risk: if an allowlist pattern is wider than intended, the permission engine allows more than the user meant. Check each pattern against what the user thinks it allows, and write a sentence for each one.
 

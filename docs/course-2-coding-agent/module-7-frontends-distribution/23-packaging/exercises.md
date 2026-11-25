@@ -3,6 +3,7 @@
 Work in order. Each exercise ends with a **Checkpoint**.
 
 **Before you start**
+- **Where the code goes:** no new slice. You publish the console app, `LocalAgent`, which brings `LocalAgent.Core` with it as a project reference.
 - Start from a clean git state. Commit everything, and tag the commit, so the release has a known source.
 - Install the .NET SDK version the project uses. Check the publishing documentation for that version before you use the flags in Exercise 2.
 - Have a second Windows user account, or a clean folder on another drive, for the install test in Exercise 5.

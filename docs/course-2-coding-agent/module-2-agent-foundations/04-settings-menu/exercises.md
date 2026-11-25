@@ -3,6 +3,7 @@
 Work in order. Each exercise ends with a **Checkpoint**.
 
 **Before you start**
+- **Where the code goes:** `Features/Settings/`, with a `SettingsCommand` for `/settings`. `OutputStyle` goes in `Shared/OutputStyle.cs`, because every screen reads it.
 - Start from a clean git state, with Lesson 3's config loading and validation working.
 - Start the chat `llama-server`.
 - Test in the terminal you normally use. Also test once in a second terminal, so you know where the menu's behaviour differs.
@@ -35,13 +36,17 @@ Work in order. Each exercise ends with a **Checkpoint**.
 
 **Do**
 
-1. Create `Settings/EffortLevel.cs` with an enum (`Low`, `Medium`, `High`) and one method that returns the limits for each level: maximum output tokens and maximum tool calls per question. Use the values from the README (512 and 2, 2048 and 4, 4096 and 8), in one place.
+1. Create `Features/Settings/EffortLevel.cs` with an enum (`Low`, `Medium`, `High`) and one method that returns the limits for each level: maximum output tokens and maximum tool calls per question. Use the values from the README (512 and 2, 2048 and 4, 4096 and 8), in one place.
 2. Make the loop read these limits from the chosen effort, instead of from its own constants. The max tool calls replaces the iteration limit from the RAG course for this purpose.
 3. Store the chosen effort in the config as a text value (`"low"`, `"medium"`, `"high"`). Parse it on load, and fall back to `medium` with a warning if the text is unknown.
 
 Here is the shape of the mapping. Keep it as a small, readable table in code:
 
 ```csharp
+namespace LocalAgent.Features.Settings;
+
+public enum EffortLevel { Low, Medium, High }
+
 public static class EffortMap
 {
     // The only place where effort is turned into numbers.
@@ -53,6 +58,13 @@ public static class EffortMap
         EffortLevel.High   => (4096, 8),
         _ => throw new ArgumentOutOfRangeException(nameof(level))
     };
+
+    // Step 3: "low", "medium", "high", case-insensitive. Unknown or missing text gives Medium
+    // and a warning. This is the only place user text becomes an EffortLevel.
+    public static (EffortLevel Level, string? Warning) Parse(string? text)
+    {
+        throw new NotImplementedException(); // students write this
+    }
 }
 ```
 
@@ -70,9 +82,28 @@ public static class EffortMap
 
 **Do**
 
-1. Create `Settings/SettingsValidator.cs`. It takes the setting name and the proposed value, and returns either "accepted" or "refused, because …". It does not write anything.
+1. Create `Features/Settings/SettingsValidator.cs`. It takes the setting name and the proposed value, and returns either "accepted" or "refused, because …". It does not write anything.
 2. Write one rule per row of the table from Exercise 0. For the dependency rule, the validator must also look at the current value of the other setting, and say so in the message.
 3. Write the refusal messages so that each one tells the user the valid range or the value they need to change. "Invalid" alone is not a message.
+
+Start from this shell:
+
+```csharp
+namespace LocalAgent.Features.Settings;
+
+// Accepted with the parsed value, or refused with the sentence shown to the user.
+public record SettingCheck(bool Accepted, AppConfig? Updated, string? Refusal);
+
+public static class SettingsValidator
+{
+    // Checks one proposed value. Writes nothing. current is needed for dependency rules,
+    // such as contextSize against serverContextSize (step 2).
+    public static SettingCheck Check(string setting, string proposedText, AppConfig current)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Example of a dependency message:** "contextSize 16384 is larger than the server's context size 8192. Lower contextSize, or start llama-server with a larger context."
 
@@ -86,7 +117,21 @@ public static class EffortMap
 
 **Do**
 
-1. Create `Settings/SettingsStore.cs` with a `SaveAsync(AppConfig config)` method. It writes the JSON to `settings.json.tmp` next to the real file, then moves it over the real file in one step. If the write fails, the temporary file is deleted, and the real file is untouched.
+1. Create `Features/Settings/SettingsStore.cs` with a `SaveAsync(AppConfig config)` method. It writes the JSON to `settings.json.tmp` next to the real file, then moves it over the real file in one step. If the write fails, the temporary file is deleted, and the real file is untouched. If you already wrote the atomic `ConfigStore.Save` in Lesson 3, Exercise 4, `SaveAsync` can call it; keep one implementation, not two.
+
+```csharp
+namespace LocalAgent.Features.Settings;
+
+public static class SettingsStore
+{
+    // Writes settings.json.tmp next to the real file, then moves it over the real file.
+    // Returns null on success, or the error to show. The real file changes only on success.
+    public static Task<string?> SaveAsync(AppConfig config)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 2. Make the menu call `SaveAsync` only after the validator accepts the value. Keep the old value in memory until the save returns successfully.
 3. Simulate a failed save: make the folder read-only for the save, or hold the file open in another program. The menu must show the failure, and the screen must still show the old value.
 
@@ -104,10 +149,47 @@ public static class EffortMap
 
 **Do**
 
-1. Create `Settings/SettingsMenu.cs`. It shows one row per setting: the name, the current value, and a short note. Use the table from Exercise 0 for the content.
+1. Create `Features/Settings/SettingsMenu.cs`. It shows one row per setting: the name, the current value, and a short note. Use the table from Exercise 0 for the content.
 2. Make the selected row marked with a character such as `>`. Use colour only in addition to the marker, and only if colour is allowed (Exercise 6).
 3. Read the keys with a method that returns the key pressed. Map up and down to moving the selection, Enter to editing the selected row, and Esc to going back.
 4. When a row is in edit mode, read a line of text, parse it, validate it, and save it. Then return to the list with the new value shown.
+
+Start from this shell:
+
+```csharp
+namespace LocalAgent.Features.Settings;
+
+// One row: the setting's name, its note, and what "applies when" says (Exercise 7).
+public record MenuRow(string Setting, string Note, string AppliesWhen);
+
+public sealed class SettingsMenu(AppConfig config, IReadOnlyList<MenuRow> rows)
+{
+    // Runs until Esc. Returns the config as it was last saved.
+    public Task<AppConfig> RunAsync()
+    {
+        throw new NotImplementedException(); // students write this
+    }
+
+    // Draws every row, the marker on the selected one, and the current values.
+    private void Draw(int selected)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+
+    // The only method that reads keys (see "Read this carefully" below).
+    private static ConsoleKey ReadKey()
+    {
+        throw new NotImplementedException(); // students write this
+    }
+
+    // Reads a value, validates it with SettingsValidator, saves with SettingsStore.
+    // Stays in edit mode after a refusal. Returns true when the value was saved.
+    private Task<bool> EditRowAsync(MenuRow row)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Read this carefully.** Read key presses in one place. If the menu reads keys in two methods, a key pressed during one can be lost in the other.
 
@@ -142,7 +224,16 @@ public static class EffortMap
 
 **Do**
 
-1. Check the environment variable `NO_COLOR` at start. If it is set to any value, turn colour off for the whole app, not only for the menu.
+1. Check the environment variable `NO_COLOR` at start. If it is set and not empty, turn colour off for the whole app, not only for the menu. Keep the answer in one place that every part of the app reads:
+
+```csharp
+public static class OutputStyle
+{
+    // The NO_COLOR convention: present and not an empty string means no colour.
+    public static bool ColorEnabled { get; } =
+        string.IsNullOrEmpty(Environment.GetEnvironmentVariable("NO_COLOR"));
+}
+```
 2. Add a fallback for key reading: if the terminal does not support the key-reading method, switch to a numbered list where the user types a row number and then a value.
 3. Test both modes: once with `NO_COLOR` set, and once with the fallback forced (for example with a setting `"menuMode": "plain"` in the config).
 

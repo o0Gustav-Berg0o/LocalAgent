@@ -3,6 +3,7 @@
 Work in order. Each exercise ends with a **Checkpoint**.
 
 **Before you start**
+- **Where the code goes:** `Features/Mcp/`.
 - Start from a clean git state, with Lesson 19 working.
 - Use the MCP server you built in the RAG course, Lesson 11 as your test server. It exposes the notes tools, and you can run it from the command line. If it is not available, use the minimal server in the Preparation note below.
 - Start the chat `llama-server`.
@@ -30,8 +31,8 @@ Work in order. Each exercise ends with a **Checkpoint**.
 
 **Do**
 
-1. Create `mcp-servers.json` in the app's data folder. Give each server a name, a program, an argument list, and an optional list of environment variable names it needs.
-2. Create `Mcp/McpConfig.cs` that reads and validates the file. Refuse two servers with the same name (Gotcha 4.1). Refuse a program name that contains a path, as in Lesson 9.
+1. Create `mcp-servers.json` in the main folder (the app's data folder from Module 1, Lesson 1). Give each server a name, a program, an argument list, and an optional list of environment variable names it needs.
+2. Create `Features/Mcp/McpConfig.cs` that reads and validates the file. Refuse two servers with the same name (Gotcha 4.1). Refuse a program name that contains a path, as in Lesson 9.
 3. Pass the environment variable names, not values. The client copies the values from its own environment, and only for the names listed.
 
 Here is one entry, shown for orientation:
@@ -46,6 +47,26 @@ Here is one entry, shown for orientation:
 }
 ```
 
+Start from this shell:
+
+```csharp
+namespace LocalAgent.Features.Mcp;
+
+// Environment holds variable names only. Values are copied from the app's own environment.
+public record McpServerEntry(string Name, string Program, string[] Arguments, string[] Environment,
+    string Description);
+
+public static class McpConfig
+{
+    // Reads mcp-servers.json. Refuses the whole file for two servers with the same name
+    // (case-insensitive). Skips, with a warning, a server whose program contains a path.
+    public static (IReadOnlyList<McpServerEntry> Servers, IReadOnlyList<string> Warnings) Load(string path)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
+
 **Checkpoint:** the file loads with one server, and a file with two servers of the same name is refused with a message.
 
 ---
@@ -56,10 +77,37 @@ Here is one entry, shown for orientation:
 
 **Do**
 
-1. Create `Mcp/McpConnection.cs`. It starts the server process with the argument list, a clean environment (with only the listed variables added), and a working directory in the project root.
+1. Create `Features/Mcp/McpConnection.cs`. It starts the server process with the argument list, a clean environment (with only the listed variables added), and a working directory in the project root.
 2. Use the protocol's initialise and list-tools calls to read the server's tools. Use the MCP client library that matches the protocol version you are targeting, and check its documentation for the exact method names, because they differ between versions.
 3. Prefix each tool name with the server name and a dot. The prefixed name is what the model sees.
 4. Show the list at start: the server name, the number of tools, and each prefixed name.
+
+Start from this shell. The library calls go inside it, so no other class knows the library:
+
+```csharp
+using Microsoft.Extensions.AI;
+
+namespace LocalAgent.Features.Mcp;
+
+public sealed class McpConnection : IAsyncDisposable
+{
+    // Starts the server through the library's stdio transport, with the argument list, a cleared
+    // environment plus the listed variables, and the working folder. Waits for the initialise
+    // reply before it lists the tools (the handshake below).
+    public static Task<McpConnection> ConnectAsync(McpServerEntry server, string workingFolder,
+        CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+
+    // Each server tool, renamed "<server name>.<tool name>". If the library's tool type is an
+    // AIFunction, wrap it to give it the prefixed name; the client sets the prefix, never the server.
+    public IReadOnlyList<AITool> Tools => throw new NotImplementedException(); // students write this
+
+    // Stops the server process.
+    public ValueTask DisposeAsync() => throw new NotImplementedException(); // students write this
+}
+```
 
 **Read this carefully.** Initialisation is a handshake. The client must wait for the server's reply before it asks for tools. A client that asks too early gets no answer and waits until the timeout.
 

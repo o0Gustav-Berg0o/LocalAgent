@@ -3,6 +3,7 @@
 Work in order. Each exercise ends with a **Checkpoint**.
 
 **Before you start**
+- **Where the code goes:** `Features/ReadFiles/`. `ProjectPaths` goes in `Shared/Files/`, because every file tool after this lesson uses it.
 - Start from a clean git state, with Lesson 4 working.
 - Create a sample project folder for testing, separate from your notes. For example `C:\Repos\sandbox` with a few small code files, one folder named `bin` with a large file in it, and one binary file (any `.png` or `.exe` you trust). You will use it in every exercise.
 - Start the chat `llama-server`.
@@ -32,7 +33,7 @@ Work in order. Each exercise ends with a **Checkpoint**.
 
 **Do**
 
-1. Create `Tools/Files/ProjectPaths.cs` with a static method that takes the project root and a path given by the model, and returns either the full resolved path, or a refusal with a reason.
+1. Create `Shared/Files/ProjectPaths.cs` with a static method that takes the project root and a path given by the model, and returns either the full resolved path, or a refusal with a reason.
 2. The method must:
    - combine the path with the root if it is relative,
    - resolve `..` and links to the full path,
@@ -42,6 +43,8 @@ Work in order. Each exercise ends with a **Checkpoint**.
 Here is the shape. Fill in the details yourself, and note what each line protects against:
 
 ```csharp
+namespace LocalAgent.Shared.Files;
+
 public static class ProjectPaths
 {
     public static bool TryResolve(string root, string requested, out string fullPath, out string reason)
@@ -77,11 +80,36 @@ public static class ProjectPaths
 
 **Do**
 
-1. Create `Tools/Files/ListFilesTool.cs`. Its input is a folder path (default: the root) and an optional pattern such as `*.cs`.
+1. Create `Features/ReadFiles/ListFilesTool.cs`. Its input is a folder path (default: the root) and an optional pattern such as `*.cs`.
 2. Use `ProjectPaths.TryResolve` on the folder. Refuse if it fails.
 3. Skip folders named in the config's skip list (`bin`, `obj`, `.git`, `.vs`, `node_modules`). Skip files that are binary (write the detector in Exercise 4, and call it here as a stub for now).
 4. Limit the output to 200 entries. If there are more, add a final line: `... N more entries not shown. Narrow the pattern or list a subfolder.`
 5. Return one name per line, relative to the root, with a trailing `/` for folders.
+
+Start from this shell. A tool is a class with one method, registered with `AIFunctionFactory` in Exercise 6:
+
+```csharp
+using System.ComponentModel;
+
+namespace LocalAgent.Features.ReadFiles;
+
+public sealed class ListFilesTool(string root, IReadOnlyList<string> skipFolders)
+{
+    public const int MaxEntries = 200;
+
+    [Description("Written in Exercise 6.")]
+    public string ListFiles(
+        [Description("Folder relative to the project root. Empty for the root.")] string folder = "",
+        [Description("Optional file pattern, for example *.cs.")] string? pattern = null)
+    {
+        // 1. ProjectPaths.TryResolve(root, folder, ...). Refuse with the reason if it fails.
+        // 2. Walk the folder. Skip skipFolders and binary files (BinaryDetector, Exercise 4).
+        // 3. One name per line, relative to the root, with "/" after a folder name.
+        // 4. Stop at MaxEntries, and add the cut message from step 4.
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Read this carefully.** The model reads the list as text. A folder with 5000 names costs tokens and says little. The limit and the message are the feature.
 
@@ -98,12 +126,38 @@ public static class ProjectPaths
 
 **Do**
 
-1. Create `Tools/Files/ReadFileTool.cs`. Inputs: a path, an optional start line (1-based, default 1), and an optional count (default 200).
+1. Create `Features/ReadFiles/ReadFileTool.cs`. Inputs: a path, an optional start line (1-based, default 1), and an optional count (default 200).
 2. Resolve the path. Refuse if it fails.
 3. Read only the lines needed, not the whole file, if the file is large. A simple approach is to stream lines and stop after the count.
 4. Enforce a byte limit of 32 KB on the returned text. If the limit is hit, cut at a line boundary, and say so.
 5. Number each returned line with its line number, so the model can refer to exact lines later. Format: `  42: text`.
 6. If the file has more lines after the returned range, add a final line: `... file has N lines in total. Use start_line to read more.`
+
+Start from this shell:
+
+```csharp
+using System.ComponentModel;
+
+namespace LocalAgent.Features.ReadFiles;
+
+public sealed class ReadFileTool(string root)
+{
+    public const int MaxBytes = 32 * 1024;
+
+    [Description("Written in Exercise 6.")]
+    public string ReadFile(
+        [Description("File path relative to the project root.")] string path,
+        [Description("First line to return, starting at 1.")] int startLine = 1,
+        [Description("Number of lines to return.")] int count = 200)
+    {
+        // 1. Resolve, and refuse as ListFiles does. Refuse a binary file (Exercise 4).
+        // 2. Stream the lines (File.ReadLines). Skip to startLine, stop after count.
+        // 3. Number each line: "  42: text". Stop at MaxBytes, at a line boundary, and say so.
+        // 4. If the file has more lines after the range, add the total-lines message (step 6).
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Read this carefully.** Line numbers must match the file on disk. If you strip line endings or skip blank lines, the numbers drift. Test with a file that has blank lines in the middle.
 
@@ -120,9 +174,28 @@ public static class ProjectPaths
 
 **Do**
 
-1. Write `Tools/Files/BinaryDetector.cs` with a method that reads the first 8 KB of a file and returns true if it contains a zero byte, or if a large share of bytes are not valid text. Keep the rule simple and written in a comment.
+1. Write `Features/ReadFiles/BinaryDetector.cs` with a method that reads the first 8 KB of a file and returns true if it contains a zero byte, or if a large share of bytes are not valid text. Keep the rule simple and written in a comment.
 2. Call it from `ReadFileTool` and `ListFilesTool`. A binary file is refused with: `<name> looks like a binary file, so it was not read.`
 3. Add one test for each: a text file with no zero bytes, a file with a zero byte, a file of random bytes.
+
+Start from this shell:
+
+```csharp
+namespace LocalAgent.Features.ReadFiles;
+
+public static class BinaryDetector
+{
+    public const int SampleBytes = 8 * 1024;
+
+    // The rule, in one sentence: (write it here).
+    // Reads at most SampleBytes from the start of the file. A zero byte means binary.
+    // Otherwise, decide which share of non-text bytes counts as binary, and write the number here.
+    public static bool LooksBinary(string fullPath)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Read this carefully.** Checking the extension alone is not enough. A file named `image.txt` can hold binary data, and a `.cs` file can hold a zero byte by mistake. Check the content.
 
@@ -136,11 +209,34 @@ public static class ProjectPaths
 
 **Do**
 
-1. Create `Tools/Files/SearchTextTool.cs`. Inputs: the text to find, and an optional folder to search in (default: the root).
+1. Create `Features/ReadFiles/SearchTextTool.cs`. Inputs: the text to find, and an optional folder to search in (default: the root).
 2. Walk the project, skip the skip list, skip binary files, and check each line for the text. Use a case-insensitive comparison by default.
 3. Return at most 50 matches. Each match is one line: `path:line: text`, with the text trimmed and cut at 160 characters.
 4. If more than 50 matches exist, add: `... N more matches. Narrow the search text or search a subfolder.`
 5. Refuse a search text shorter than three characters, with a message that asks for a longer term. This protects against searches like `a`, which match almost everything.
+
+Start from this shell. If the folder walk in `ListFilesTool` can be shared, move it to a small helper and call it from both:
+
+```csharp
+using System.ComponentModel;
+
+namespace LocalAgent.Features.ReadFiles;
+
+public sealed class SearchTextTool(string root, IReadOnlyList<string> skipFolders, int maxMatches, int minLength)
+{
+    [Description("Written in Exercise 6.")]
+    public string SearchText(
+        [Description("The text to find. At least three characters.")] string text,
+        [Description("Folder to search, relative to the project root. Empty for the root.")] string folder = "")
+    {
+        // 1. Refuse text shorter than minLength (step 5).
+        // 2. Resolve the folder. Walk it, skipping skipFolders and binary files.
+        // 3. Each match: "path:line: text", trimmed and cut at 160 characters.
+        // 4. Stop at maxMatches, and add the cut message with the count (step 4).
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Read this carefully.** The 50-match limit protects the context. The three-character minimum protects the search from being useless. Both are numbers you can change, so put them in the config and say so in the description.
 

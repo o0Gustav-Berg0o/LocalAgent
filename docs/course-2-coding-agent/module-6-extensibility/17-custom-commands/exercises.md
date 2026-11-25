@@ -3,6 +3,7 @@
 Work in order. Each exercise ends with a **Checkpoint**.
 
 **Before you start**
+- **Where the code goes:** `Features/CustomCommands/`.
 - Start from a clean git state, with Lesson 16 working.
 - Create a commands folder in the sandbox project: `sandbox\commands\`.
 - Start the chat `llama-server`.
@@ -44,10 +45,61 @@ Work in order. Each exercise ends with a **Checkpoint**.
 
 **Do**
 
-1. Create `Commands/CommandLoader.cs` that reads the commands folder, and returns, for each file, its name, its description, and its template.
-2. Create `Commands/CommandExpander.cs` with a method that takes a template and the user's arguments, and replaces `$ARGUMENTS` with the arguments (or with an empty string when there are none).
+1. Create `Features/CustomCommands/CommandLoader.cs` that reads the commands folder, and returns, for each file, its name, its description, and its template.
+2. Create `Features/CustomCommands/CommandExpander.cs` with a method that takes a template and the user's arguments, and replaces `$ARGUMENTS` with the arguments (or with an empty string when there are none).
 3. When the user types a slash followed by a command name, expand the template and send the result as the user's message through the normal loop. Do not call any tool directly.
 4. Print the expanded prompt before sending it, in a dimmed or indented form, so the user can see what was sent.
+
+Start from these shells:
+
+```csharp
+namespace LocalAgent.Features.CustomCommands;
+
+// Name is the file name without .md, used after the slash.
+public record CustomCommand(string Name, string Description, string Arguments, string Template);
+
+public static class CommandLoader
+{
+    // Reads every *.md in the commands folder: the header fields, then the template after the header.
+    // Exercise 4 adds the refusals: a clash with a built-in, a missing description.
+    public static (IReadOnlyList<CustomCommand> Commands, IReadOnlyList<string> Warnings) Load(
+        string commandsFolder, IReadOnlySet<string> builtInNames)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+
+public static class CommandExpander
+{
+    public const int MaxArgumentLength = 500;
+
+    // Replaces $ARGUMENTS with the arguments, or with "" when there are none.
+    // An argument over MaxArgumentLength is cut, and a note is added (Exercise 4).
+    // The result is sent as a normal user message, never as a tool call.
+    public static string Expand(string template, string? arguments)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
+
+Each command file becomes an `ISlashCommand` (Module 1, Lesson 1), so it is registered like every other command. `builtInNames` is the set of names already registered in `CommandHelper`, plus the RAG course's own commands:
+
+```csharp
+namespace LocalAgent.Features.CustomCommands;
+
+// Adapts one command file to the registry. The expanded text goes through the normal loop.
+public sealed class FileSlashCommand(CustomCommand command, Func<string, CancellationToken, Task> sendUserMessage)
+    : ISlashCommand
+{
+    public string Name => command.Name;
+    public string Description => command.Description;
+
+    // Expand, print the expanded prompt (step 4), then sendUserMessage.
+    public Task RunAsync(string arguments, CancellationToken cancellationToken)
+        => throw new NotImplementedException(); // students write this
+}
+```
 
 **Read this carefully.** The expansion goes into the same path as a typed message. If the code calls a tool directly from the command, the command has bypassed the loop, the permission check, and the history.
 
@@ -63,7 +115,7 @@ Work in order. Each exercise ends with a **Checkpoint**.
 
 **Do**
 
-1. Make `/help` read the command list from the loader, and show each command's name and description, after the built-in commands.
+1. Make `/help` read the registered commands from `CommandHelper`, and show each name and description: the built-in commands first, then the custom ones.
 2. Make autocomplete read the same list. The two must come from one place.
 3. Make the loader run again when the user types `/help`, so a new file appears without a restart.
 

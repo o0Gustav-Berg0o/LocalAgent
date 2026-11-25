@@ -3,6 +3,7 @@
 Work in order. Each exercise ends with a **Checkpoint**.
 
 **Before you start**
+- **Where the code goes:** `Features/Permissions/` for the modes, the session rules, and a `PermissionsCommand`. `Rule`, `PermissionEngine`, and `DecisionLog` go in `Shared/Permissions/`, and `AskPrompt` in `Shared/Prompts/`, because the loop, the shell tool, hooks, memory, and subagents use them.
 - Start from a clean git state, with Lesson 5's read tools working.
 - Use the sandbox project from Lesson 5.
 - Start the chat `llama-server`.
@@ -33,14 +34,21 @@ Work in order. Each exercise ends with a **Checkpoint**.
 
 **Do**
 
-1. Create `Permissions/Rule.cs` with a record: tool name (or `*`), target pattern (or `*`), outcome, and an optional note.
-2. Create `Permissions/PermissionEngine.cs` with a method `Evaluate(string tool, string target, IReadOnlyList<Rule> rules)`. It returns the outcome and the matching rule, or the default with no rule.
+1. Create `Shared/Permissions/Rule.cs` with a record: tool name (or `*`), target pattern (or `*`), outcome, and an optional note.
+2. Create `Shared/Permissions/PermissionEngine.cs` with a method `Evaluate(string tool, string target, IReadOnlyList<Rule> rules)`. It returns the outcome and the matching rule, or the default with no rule.
 3. Implement the order from the README: check all deny rules first. If one matches, return deny. Then allow rules. Then ask rules. Then the default, which is ask.
 4. Write the matcher for targets as a function that takes a pattern and a resolved path. Support `*` for any and `**` for any depth inside a folder. Keep the pattern language small, and document it.
 
 Here is the skeleton. The matcher is the part to write carefully:
 
 ```csharp
+namespace LocalAgent.Shared.Permissions;
+
+public enum Outcome { Allow, Ask, Deny }
+
+// Tool is a tool name or "*". Target is a pattern (step 4). Note is shown to the user and the model.
+public record Rule(string Tool, string Target, Outcome Outcome, string? Note = null);
+
 public static class PermissionEngine
 {
     public static (Outcome Outcome, Rule? Rule) Evaluate(
@@ -51,6 +59,13 @@ public static class PermissionEngine
         // 3. Then ask rules.
         // 4. Otherwise, the default: ask, with no rule.
         throw new NotImplementedException();
+    }
+
+    // "*" matches anything in one folder level, "**" matches any depth.
+    // Compare case-insensitively on Windows. Document the pattern language in this comment.
+    public static bool Matches(string pattern, string resolvedPath)
+    {
+        throw new NotImplementedException(); // students write this
     }
 }
 ```
@@ -75,9 +90,35 @@ public static class PermissionEngine
 
 **Do**
 
-1. Create `Permissions/Modes.cs` with a dictionary from mode name to rule list: `read-only`, `ask`, `trusted`. Use the table in the README (section 3.5) as the starting point.
+1. Create `Features/Permissions/Modes.cs` with a dictionary from mode name to rule list: `read-only`, `ask`, `trusted`. Use the table in the README (section 3.5) as the starting point.
 2. Store the active mode in the config. Load it at start, and fall back to `ask` with a warning if the name is unknown.
 3. Make the engine receive the rules of the active mode, not a mode name. The engine does not know modes exist.
+
+Start from this shell:
+
+```csharp
+namespace LocalAgent.Features.Permissions;
+
+public static class Modes
+{
+    public const string Default = "ask";
+
+    // Mode name to rules. Fill each list from the table in README section 3.5.
+    public static readonly IReadOnlyDictionary<string, IReadOnlyList<Rule>> Presets =
+        new Dictionary<string, IReadOnlyList<Rule>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["read-only"] = [ /* rules from the table */ ],
+            ["ask"]       = [ /* rules from the table */ ],
+            ["trusted"]   = [ /* rules from the table */ ],
+        };
+
+    // An unknown or missing name gives the rules of Default and a warning (step 2).
+    public static (IReadOnlyList<Rule> Rules, string? Warning) For(string? modeName)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Read this carefully.** Keeping the engine free of mode names means a new mode is a data change, not a code change. It also means a bug in the engine affects every mode in the same way, which is the point.
 
@@ -101,6 +142,20 @@ public static class PermissionEngine
    - ask: pause, show the prompt (Exercise 4), and act on the answer.
 4. Make sure a denied call returns a tool result, so the model's conversation stays valid (each call needs a result, Lesson 2).
 
+Start from this shell, in `AgentLoop`:
+
+```csharp
+// The one place where a tool runs. It always returns a result for the model,
+// so a denied or refused call still gets its tool message (step 4).
+private Task<string> InvokeCheckedAsync(FunctionCallContent call, AIFunction tool, CancellationToken cancellationToken)
+{
+    // 1. The target: the resolved path for a file tool, the argument text for any other tool.
+    // 2. PermissionEngine.Evaluate(call.Name, target, activeRules)
+    // 3. Allow: invoke. Deny: "denied by permission rule: <note or default>". Ask: AskPrompt (Exercise 4).
+    throw new NotImplementedException(); // students write this
+}
+```
+
 **Read this carefully.** A denied call must still produce a tool message. If you skip it, the next request to the model may be rejected or confuse it. This is a common bug.
 
 **Checkpoint**
@@ -116,9 +171,29 @@ public static class PermissionEngine
 
 **Do**
 
-1. Write `Permissions/AskPrompt.cs`. It shows: the tool in plain words, the full resolved target, a short summary of what will happen (for the test tool, its input), and the choices.
+1. Write `Shared/Prompts/AskPrompt.cs`. It shows: the tool in plain words, the full resolved target, a short summary of what will happen (for the test tool, its input), and the choices.
 2. The choices for this lesson are: `yes` (this request only), `no`, and `always` (for this session). Read the answer with a method that accepts only these exact words, and asks again on anything else.
 3. Show the same prompt format for every tool, so the user learns it once.
+
+Start from this shell:
+
+```csharp
+namespace LocalAgent.Shared.Prompts;
+
+public enum AskAnswer { Yes, No, Always }
+
+public static class AskPrompt
+{
+    // Prints the request in the format below and reads one of the exact words: yes, no, always.
+    // "always" is accepted only when offerAlways is true. Anything else asks again.
+    // Closed input (ReadLine returns null) counts as No.
+    public static AskAnswer Ask(string action, string target, string change, bool offerAlways,
+        TextReader input, TextWriter output)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 Example of the printed text. Adapt the wording:
 
@@ -147,6 +222,30 @@ Allow?  yes = this time   no = refuse   always = for this session  >
 3. Create a way to remove a session rule, from `/permissions`. Use the number of the rule.
 4. Make sure a session rule never overrides a deny rule from the mode. Deny still wins, by the order in Exercise 1.
 
+Start from this shell. The engine receives the mode rules and the session rules in one list:
+
+```csharp
+namespace LocalAgent.Features.Permissions;
+
+// In memory only. Cleared when the app closes.
+public sealed class SessionRules
+{
+    public IReadOnlyList<Rule> Rules => throw new NotImplementedException(); // students write this
+
+    // An allow rule for this tool and this exact resolved target, nothing wider (step 1).
+    public void AddExact(string tool, string resolvedTarget)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+
+    // number is 1-based, as /permissions shows it. Returns false for an unknown number.
+    public bool Remove(int number)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
+
 **Read this carefully.** The exact-target rule is the safe default. A rule that allows "all writes" after one approval is far more dangerous. Start narrow, and widen only with a deliberate choice that the user sees.
 
 **Checkpoint**
@@ -162,9 +261,32 @@ Allow?  yes = this time   no = refuse   always = for this session  >
 
 **Do**
 
-1. Create `Permissions/DecisionLog.cs` that appends one line per decision to a log file next to the config. Each line holds: time, tool, target, outcome, the rule that decided it (or "default"), and whether the user was asked and their answer.
+1. Create `Shared/Permissions/DecisionLog.cs` that appends one line per decision to a log file next to the config. Each line holds: time, tool, target, outcome, the rule that decided it (or "default"), and whether the user was asked and their answer.
 2. The log must not contain file contents or tool arguments that might be large or secret. Log the target and the summary only.
 3. Add `/permissions log` to show the last twenty lines.
+
+Start from this shell:
+
+```csharp
+namespace LocalAgent.Shared.Permissions;
+
+// What goes in the log, and what never does: (write the decision here, step 2).
+public sealed class DecisionLog(string logPath)
+{
+    // One line per decision. answer is null when the user was not asked.
+    // Never throws: returns the error text if the line could not be written, or null.
+    // The decision applies either way (Exercise 7, the locked log file).
+    public string? Append(string tool, string target, Outcome outcome, Rule? rule, string? answer)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+
+    public IReadOnlyList<string> Last(int count)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Read this carefully.** A log that records file contents becomes a second copy of the user's data in a place they did not expect. Decide what goes in, and write the decision in a comment at the top of the log class.
 

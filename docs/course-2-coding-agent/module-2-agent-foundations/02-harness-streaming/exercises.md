@@ -3,6 +3,7 @@
 Work in order. Each exercise ends with a **Checkpoint**. Do not continue until it passes.
 
 **Before you start**
+- **Where the code goes:** `Agent/AgentLoop.cs` from the RAG course, plus `Agent/TurnTiming.cs`. There is no slice in this lesson: the loop is what wires the slices together. The indicator and the Esc watcher are screen code inside the loop for now. Module 7, Lesson 21 moves them out.
 - Start from a clean git state, so you can return to the working version of the loop.
 - Start the chat `llama-server` (port 8080). The embedding server is not needed for this lesson.
 - Use a terminal you actually work in. Streaming output looks different in different terminals, and a lab that only works in one terminal is not finished.
@@ -61,7 +62,19 @@ Work in order. Each exercise ends with a **Checkpoint**. Do not continue until i
 4. Replace the non-streaming call in `AskAsync` with your new method, for the step where the model gives its final answer.
 5. Keep the tool-call handling as it is for now. Tool calls arrive in updates too. Do not run them while you are still printing text; collect them and handle them after the stream ends. (Exercise 4 covers this more carefully.)
 
-Here is the shape of the loop body. The method names are placeholders; use the ones your code has:
+Start from this shell. The tools are in `options.Tools`. `ToolCalls` stays empty until Exercise 4:
+
+```csharp
+// Streams one model answer. Prints text as it arrives, and returns the complete text and the
+// tool calls the model asked for. It adds nothing to the history; the caller does (Exercise 3).
+private Task<(string Text, List<FunctionCallContent> ToolCalls)> StreamAnswerAsync(
+    IList<ChatMessage> history, ChatOptions options, CancellationToken cancellationToken)
+{
+    throw new NotImplementedException(); // students write this
+}
+```
+
+Here is the shape of the loop body that goes inside it. The method names are placeholders; use the ones your code has:
 
 ```csharp
 var builder = new StringBuilder();
@@ -160,6 +173,17 @@ finally
 }
 ```
 
+The indicator itself:
+
+```csharp
+// Writes "working Ns" on the current line once a second, until the token is cancelled.
+// On cancel it clears the line and returns. It never writes after the cancel.
+private static Task ShowWorkingIndicator(CancellationToken cancellationToken)
+{
+    throw new NotImplementedException(); // students write this
+}
+```
+
 **Read this carefully.** The `finally` block is the reason this works. Without it, an exception leaves the indicator running, and it writes over the next prompt.
 
 **Checkpoint**
@@ -186,6 +210,18 @@ finally
 3. Print a short line, for example `[cancelled]`, and return to the prompt.
 4. Make sure the next question works normally. A cancel must not leave the history in a broken state.
 
+Start from this shell:
+
+```csharp
+// Watches for Esc while an answer streams. The only code that reads keys during a stream
+// (README section 4.5). It checks Console.KeyAvailable, so it never blocks.
+// Esc: cancel the answer. It ends when stop is cancelled, which happens when the answer ends.
+private static Task WatchForEscapeAsync(CancellationTokenSource answer, CancellationToken stop)
+{
+    throw new NotImplementedException(); // students write this
+}
+```
+
 **Read this carefully.** Discarding the partial text means the history after a cancel looks as if the cancelled question was never answered for the model. The user's question stays in the history, so the model knows it was asked. Decide whether that is what you want, and write a sentence in your notes explaining why. (Hint: the alternative is to add a short assistant message such as "[cancelled by user]", which is clearer to the model.)
 
 **Checkpoint**
@@ -208,6 +244,18 @@ finally
 1. Record the time when the request is sent, and the time the first text update arrives. The difference is time to first token.
 2. Record the time when the answer ends. The difference from the send time is total time, which includes any tool calls and their model calls.
 3. After the answer, print one line, for example: `[timing] first token 1.8s, total 14.2s, tools 3.1s`. Tool time is total time minus the model time you can attribute, so for this exercise, measure tool time directly around each tool call and add it up.
+
+Start from this shell:
+
+```csharp
+// One per turn, measured with Stopwatch. FirstToken is null for a tool-only answer.
+// Tools is the sum of the time measured around each tool call.
+public record TurnTiming(TimeSpan? FirstToken, TimeSpan Total, TimeSpan Tools)
+{
+    // "[timing] first token 1.8s, total 14.2s, tools 3.1s". Leave out a part that is null or zero.
+    public override string ToString() => throw new NotImplementedException(); // students write this
+}
+```
 
 **Read this carefully.** Measuring tool time directly is more reliable than subtracting. The model time includes network waiting and generation, and both are hard to split. The direct measurement is simple: start a stopwatch before each tool, stop it after.
 

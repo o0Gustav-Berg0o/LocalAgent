@@ -3,6 +3,7 @@
 Work in order. Each exercise ends with a **Checkpoint**.
 
 **Before you start**
+- **Where the code goes:** `Features/Context/`, the same slice as Lesson 10, with a `CompactCommand`.
 - Start from a clean git state, with Lesson 10's budget working.
 - Set the context size in the config to a small value, such as 4096, so you reach the thresholds within a few questions.
 - Start the chat `llama-server`.
@@ -32,10 +33,29 @@ Work in order. Each exercise ends with a **Checkpoint**.
 
 **Do**
 
-1. Create `Context/Placeholder.cs`. It replaces the content of tool results older than the most recent N turns (default 4) with a placeholder that says what was done: "[result of read_file on src/Program.cs, 300 lines, removed to save space]".
+1. Create `Features/Context/Placeholder.cs`. It replaces the content of tool results older than the most recent N turns (default 4) with a placeholder that says what was done: "[result of read_file on src/Program.cs, 300 lines, removed to save space]".
 2. Keep the call identifier in each replaced result (the RAG course, Lesson 6 fixed this bug). The placeholder must still be a tool result, not plain text.
 3. Make the function report how many characters it freed.
 4. Run it on the Exercise 0 history, and check the status line afterwards.
+
+Start from this shell:
+
+```csharp
+using Microsoft.Extensions.AI;
+
+namespace LocalAgent.Features.Context;
+
+public static class Placeholder
+{
+    // Replaces the content of tool results older than the last keepTurns turns with one line
+    // that says what the result was (step 1). Each replaced message stays a tool message with
+    // the same call identifier (step 2). Returns the number of characters freed.
+    public static int Apply(IList<ChatMessage> history, int keepTurns = 4)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Read this carefully.** The placeholder must say what the result was, not only that it was removed. A model that sees "[removed]" does not know whether it read a file or ran a command, and it may read the file again, which costs the same tokens.
 
@@ -49,7 +69,7 @@ Work in order. Each exercise ends with a **Checkpoint**.
 
 **Do**
 
-1. Create `Context/SummaryFormat.cs` with the structure: goal, decisions, files, open items, constraints. Write the section names and one sentence describing each.
+1. Create `Features/Context/SummaryFormat.cs` with the structure: goal, decisions, files, open items, constraints. Write the section names and one sentence describing each.
 2. Write the instructions for the summary model call. They must say: use exactly these sections, keep file names exactly as written, do not add facts that are not in the messages, and say "none" for an empty section.
 3. Keep the instructions short. They are sent with every compaction, and they cost tokens.
 
@@ -64,6 +84,24 @@ If a heading has nothing to report, write "none".
 Do not add facts that are not in the messages.
 ```
 
+Keep the sections and the text in one class:
+
+```csharp
+namespace LocalAgent.Features.Context;
+
+public static class SummaryFormat
+{
+    // The headings, in order. One sentence each on what goes under it (step 1).
+    public static readonly string[] Sections = ["Goal", "Decisions", "Files", "Open items", "Constraints"];
+
+    // The text above, adapted. pinnedRules are added as a fixed block (Exercise 4).
+    public static string Instructions(IReadOnlyList<string> pinnedRules)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
+
 **Checkpoint:** the instruction text is under 150 words, and each rule in it corresponds to a failure you have seen or can imagine.
 
 ---
@@ -74,10 +112,42 @@ Do not add facts that are not in the messages.
 
 **Do**
 
-1. Create `Context/Compactor.cs`. It takes the messages to compact and returns a summary message.
+1. Create `Features/Context/Compactor.cs`. It takes the messages to compact and returns a summary message.
 2. Before calling the model, write the full transcript to the session file (you may use a simple text file until Lesson 13). Check that the write succeeded. If it did not, stop, and do not compact.
 3. Call the model with the summary instructions and the old messages. Use the non-streaming call from Module 2, since the summary is not shown token by token.
 4. Replace the old messages in the working history with one message, marked as a summary. The recent turns stay as they were.
+
+Start from this shell. Exercise 4 fills in `Split`:
+
+```csharp
+using Microsoft.Extensions.AI;
+
+namespace LocalAgent.Features.Context;
+
+public sealed class Compactor(IChatProvider provider, IReadOnlyList<string> pinnedRules)
+{
+    // 1. Split (Exercise 4). Nothing old enough: return false, change nothing.
+    // 2. Write the full transcript (step 2). A failed write: return false, change nothing.
+    // 3. One model call with SummaryFormat.Instructions and the old messages.
+    // 4. Only after the call succeeds: replace the old messages with one summary message.
+    // Returns true if the history was compacted.
+    public Task<bool> CompactAsync(IList<ChatMessage> history, string transcriptPath,
+        CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+
+    // Old messages to summarise, and the last keepTurns turns kept verbatim.
+    // A turn is never cut, and a tool call never loses its result.
+    public static (IReadOnlyList<ChatMessage> Old, IReadOnlyList<ChatMessage> Recent) Split(
+        IReadOnlyList<ChatMessage> history, int keepTurns = 4)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
+
+`IChatProvider` from Lesson 3 only streams. For the summary, either add a non-streaming method to the interface, or collect the streamed text into one string. Decide, and write why.
 
 **Read this carefully.** The order is: write the transcript, then call the model, then replace the history. If the model call fails, the history must be unchanged. A compaction that fails halfway must leave the conversation as it was.
 
@@ -112,9 +182,30 @@ Do not add facts that are not in the messages.
 
 **Do**
 
-1. Add `/compact` to `CommandHelper`. It runs placeholdering, then checks the budget, and compacts only if still above the act threshold. It prints what it did and how much space was freed.
+1. Add a `CompactCommand` (an `ISlashCommand`) in `Features/Context/`, and register it in `Program.cs`. It runs placeholdering, then checks the budget, and compacts only if still above the act threshold. It prints what it did and how much space was freed.
 2. Add an `autoCompact` setting, default off. When it is on and the act threshold is crossed, compact automatically, and print one line saying so.
 3. Make sure `/compact` with nothing to compact prints "nothing to compact" and changes nothing.
+
+Start from this shell:
+
+```csharp
+using Microsoft.Extensions.AI;
+
+namespace LocalAgent.Features.Context;
+
+public sealed class CompactCommand(Func<IList<ChatMessage>> history, Compactor compactor, ContextBudget budget)
+    : ISlashCommand
+{
+    public string Name => "compact";
+    public string Description => "Free context room: placeholders first, then a summary if still needed.";
+
+    // 1. Placeholder.Apply, and print the characters freed.
+    // 2. Measure again (Lesson 10). Still above the act threshold: compactor.CompactAsync.
+    // 3. Print what was done and the new percentage, or "nothing to compact".
+    public Task RunAsync(string arguments, CancellationToken cancellationToken)
+        => throw new NotImplementedException(); // students write this
+}
+```
 
 **Checkpoint**
 - `/compact` on a short history prints "nothing to compact".

@@ -14,7 +14,7 @@
 
 ## Two separate things: setup and modes
 
-**First-run setup** happens once, on the first start, and can be run again with `/setup`. It asks questions, scans the machine, suggests a model, and helps install it. It answers "what can this machine run?"
+**First-run setup** happens once, on the first start, and can be run again with `/setup`. It scans the machine by itself, shows the result for the user to verify or change, asks the few questions the machine cannot answer, suggests a model, and helps install it. It answers "what can this machine run?" The working folder is not part of setup: it is asked at every start.
 
 **Settings** are changed at any time with `/settings`: model, effort, permission mode, paths, and output style. They are stored in a file. Setup writes the first values; settings change them later.
 
@@ -30,8 +30,8 @@ A mode is not a setting. Switching modes does not change the model or the permis
 ## Module 0: Setup
 
 ### Lesson 0 — First-run setup
-- **Build:** a setup wizard. Questions (purpose, patience for waiting, project folder). Read-only hardware scan (RAM, GPU and VRAM, free disk). A model suggestion table by hardware class. Guided install: show the commands and links, and download only after the user confirms the source, file name, and size.
-- **Concepts:** read-only scans; why download needs confirmation; first-run versus repeatable setup.
+- **Build:** a setup wizard. An automatic read-only scan (OS, CPU, RAM, GPU and VRAM, free disk, `llama-server`, model files), shown for the user to verify or change. Questions the machine cannot answer (purpose, patience, main folder). A working-folder question at every start. A model suggestion table by hardware class. Guided install: show the commands and links, and download only after the user confirms the source, file name, and size.
+- **Concepts:** read-only scans; why download needs confirmation; first-run versus repeatable setup; main folder versus working folder.
 - **Visual:** a checklist that ticks off each setup step; a progress bar during download.
 - **Note:** model names and quantisations are checked against current listings when the lesson is written.
 

@@ -3,6 +3,7 @@
 Work in order. Each exercise ends with a **Checkpoint**.
 
 **Before you start**
+- **Where the code goes:** `Features/Hooks/`. Hooks run through `CommandRunner` in `Shared/Processes/`.
 - Start from a clean git state, with Module 3's write and shell tools working.
 - Install a formatter or a build tool you can run in the sandbox. A `dotnet build` works.
 - Start the chat `llama-server`.
@@ -28,9 +29,32 @@ Work in order. Each exercise ends with a **Checkpoint**.
 
 **Do**
 
-1. Create `hooks.json` in the app's data folder, with one hook: event `after_file_change`, match `*.cs`, program `dotnet`, arguments `build`, timeout 120 seconds, and a description.
-2. Create `Hooks/HookLoader.cs` that reads the file, validates each hook (the event name must be one of the five, the program must not contain a path, the timeout must be in range), and returns the list.
+1. Create `hooks.json` in the main folder (the app's data folder from Module 1, Lesson 1), never in the working folder, with one hook: event `after_file_change`, match `*.cs`, program `dotnet`, arguments `build`, timeout 120 seconds, and a description.
+2. Create `Features/Hooks/HookLoader.cs` that reads the file, validates each hook (the event name must be one of the five, the program must not contain a path, the timeout must be in range), and returns the list.
 3. Refuse a hook with an unknown event, and warn with its position in the file.
+
+Start from this shell:
+
+```csharp
+namespace LocalAgent.Features.Hooks;
+
+// Event is one of the five names in the README. Match is a file pattern or a tool name.
+// ModelSeesOutput is false by default (Exercise 3).
+public record Hook(string Event, string Match, string Program, string[] Arguments, int TimeoutSeconds,
+    string Description, bool ModelSeesOutput = false);
+
+public static class HookLoader
+{
+    public static readonly string[] Events = [ /* the five event names from the README */ ];
+
+    // Reads hooks.json. A hook with an unknown event, a program with a path, or a timeout out of
+    // range is skipped with a warning that gives its position (1-based). The others are returned.
+    public static (IReadOnlyList<Hook> Hooks, IReadOnlyList<string> Warnings) Load(string hooksPath)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Read this carefully.** Validation is the first line of defence. A hook with a program that contains a path (Module 3, Lesson 9, section 4.4) is refused before it can run.
 
@@ -44,9 +68,25 @@ Work in order. Each exercise ends with a **Checkpoint**.
 
 **Do**
 
-1. Create `Hooks/HookRunner.cs`. Reuse the command runner from Module 3, Lesson 9 if you wrote it there. If not, write the same rules: argument list, `UseShellExecute` off, the project root as working directory, a cleared environment, a timeout that stops the process tree, and an output limit.
+1. Create `Features/Hooks/HookRunner.cs`. Reuse the command runner from Module 3, Lesson 9 if you wrote it there. If not, write the same rules: argument list, `UseShellExecute` off, the project root as working directory, a cleared environment, a timeout that stops the process tree, and an output limit.
 2. Replace the placeholder `{file}` in each argument with the resolved path of the changed file, as one argument.
 3. Return the exit code, the duration, and the output, cut to the limit with the last part kept.
+
+Start from this shell:
+
+```csharp
+namespace LocalAgent.Features.Hooks;
+
+public sealed class HookRunner(CommandRunner runner, string projectRoot)
+{
+    // Replaces "{file}" inside each argument with the resolved path, so the path stays one argument.
+    // Runs through CommandRunner (Lesson 9): same argument list, environment, timeout, and tree stop.
+    public Task<CommandResult> RunAsync(Hook hook, string? resolvedFile, CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Read this carefully.** The placeholder is replaced inside one argument, not in the whole command. A path with a space must stay one argument. Test it with a file name that contains a space.
 

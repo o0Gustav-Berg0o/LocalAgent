@@ -3,6 +3,7 @@
 Work in order. Each exercise ends with a **Checkpoint**.
 
 **Before you start**
+- **Where the code goes:** `Features/ProjectMemory/`, with a `MemoryCommand`. `SecretCheck` goes in `Shared/Security/`, because notes, skills, and session export use it.
 - Start from a clean git state, with Lesson 11 working.
 - Use the sandbox project. Create a folder for the test memory files inside it.
 - Start the chat `llama-server`.
@@ -33,9 +34,34 @@ Work in order. Each exercise ends with a **Checkpoint**.
 **Do**
 
 1. In the sandbox project root, create `AGENT.md`. Write at most twenty lines: the build command, the test command, the folder layout in three lines, and two style rules.
-2. Create `Memory/ProjectInstructions.cs` that finds the file in the project root and reads it. If the file is missing, it returns nothing, without an error.
+2. Create `Features/ProjectMemory/ProjectInstructions.cs` that finds the file in the project root and reads it. If the file is missing, it returns nothing, without an error.
 3. Add the text to the system prompt, after the fixed instructions, under a heading that says where it came from ("Project instructions from AGENT.md").
 4. Make the loader read the file once per session, not once per request.
+
+Start from this shell:
+
+```csharp
+namespace LocalAgent.Features.ProjectMemory;
+
+public static class ProjectInstructions
+{
+    public const string FileName = "AGENT.md";
+
+    // Reads AGENT.md from the working folder once, at session start. A missing file gives null,
+    // not an error. The caller keeps the text for the whole session.
+    public static string? Load(string workingFolder)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+
+    // The block added to the system prompt, after the fixed instructions:
+    // a heading that says where the text came from, then the text.
+    public static string ToPromptBlock(string text)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Read this carefully.** Read the file once, at the start of the session, and keep the text in memory. Reading it on every request costs disk time for no benefit, and makes the loaded text change in the middle of a conversation if the file is edited.
 
@@ -75,6 +101,46 @@ Here is the note format. Keep it readable as plain Markdown:
 - (2026-11-25) The config loader is in Config/Loader.cs. Reason: user asked where settings are read.
 ```
 
+Start from these shells:
+
+```csharp
+using System.ComponentModel;
+
+namespace LocalAgent.Features.ProjectMemory;
+
+public record MemoryNote(string Section, string Text, string Reason, DateOnly Date);
+
+public sealed class MemoryNotes(string notesPath)   // .agent/memory.md
+{
+    public static readonly string[] Sections = ["commands", "layout", "conventions", "known issues"];
+
+    // Appends under the section heading, with the date (the format above).
+    public void Append(MemoryNote note) => throw new NotImplementedException(); // students write this
+
+    // Section to notes, numbered from 1 in each section, as /memory shows them (Exercise 6).
+    public IReadOnlyDictionary<string, IReadOnlyList<MemoryNote>> ReadAll()
+        => throw new NotImplementedException(); // students write this
+
+    public bool Remove(string section, int number) => throw new NotImplementedException(); // students write this
+}
+
+public sealed class ProposeMemoryNoteTool(MemoryNotes notes)
+{
+    [Description("Write the description yourself: when a fact is worth remembering, and when not.")]
+    public string ProposeMemoryNote(
+        [Description("One of: commands, layout, conventions, known issues.")] string section,
+        [Description("The note, one or two sentences.")] string note,
+        [Description("Why this is worth remembering.")] string reason)
+    {
+        // 1. Refuse an unknown section, and list the valid ones.
+        // 2. The size and secret checks (Exercise 4).
+        // 3. Ask: yes, no, or edit (AskPrompt from Lesson 6, with an edit choice).
+        // 4. Yes or edited: notes.Append. No: write nothing. Return what happened.
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
+
 **Read this carefully.** The agent note file is separate from the user's instruction file. The user's file is never written by a tool. A student who merges the two has removed the user's control over their own instructions.
 
 **Checkpoint**
@@ -93,6 +159,25 @@ Here is the note format. Keep it readable as plain Markdown:
 2. Add a secret check. Refuse a proposed note that contains a pattern that looks like a key: a long run of letters and digits with a common prefix such as `sk-`, `ghp_`, or a line with `password=`. Write the patterns in the config, so they can be changed.
 3. Make the refusal say what was matched, without printing the secret itself. Show the first four characters and the length.
 
+Start from this shell. Session export (Lesson 13, stretch) reuses it:
+
+```csharp
+using System.Text.RegularExpressions;
+
+namespace LocalAgent.Shared.Security;
+
+public static class SecretCheck
+{
+    // Patterns come from the config (step 2). Returns null when nothing matched, or a message
+    // with the pattern name, the first four characters of the match, and its length.
+    // Never returns the full match.
+    public static string? Find(string text, IReadOnlyList<Regex> patterns)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
+
 **Read this carefully.** A secret check is a heuristic. It catches the common formats and misses others. Say so in the README of your app, and do not describe it as a guarantee.
 
 **Checkpoint**
@@ -107,9 +192,44 @@ Here is the note format. Keep it readable as plain Markdown:
 
 **Do**
 
-1. Add `/memory` to `CommandHelper`. It prints one block per file: the path, the size in tokens, the last change date, and for agent notes, the sections with the number of notes in each.
+1. Add a `MemoryCommand` (an `ISlashCommand`) in `Features/ProjectMemory/`, and register it in `Program.cs`. It prints one block per file: the path, the size in tokens, the last change date, and for agent notes, the sections with the number of notes in each.
 2. Check whether each file is tracked by git, by asking git for the file's status. If git is not available, say so, and do not fail.
 3. Warn when `.agent/memory.md` is tracked and contains notes, because a committed memory file shares its contents with everyone who has the repository.
+
+Start from this shell. Run git through the `CommandRunner` from Lesson 9, so it gets the same timeout and argument list:
+
+```csharp
+namespace LocalAgent.Features.ProjectMemory;
+
+public enum TrackedState { Tracked, NotTracked, GitUnavailable }
+
+public static class GitStatus
+{
+    // Asks git whether the file is tracked, for example with "git ls-files --error-unmatch <path>".
+    // Read-only: never adds, never commits. Git missing or failing gives GitUnavailable.
+    public static Task<TrackedState> IsTrackedAsync(CommandRunner runner, string workingFolder, string path)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
+
+And the command:
+
+```csharp
+namespace LocalAgent.Features.ProjectMemory;
+
+public sealed class MemoryCommand(string workingFolder, MemoryNotes notes, CommandRunner runner) : ISlashCommand
+{
+    public string Name => "memory";
+    public string Description => "Show the memory files: size, age, sections, and whether git tracks them.";
+
+    // No arguments: one block per file (step 1), with the git state (step 2) and the warning (step 3).
+    // "remove <section> <number>": Exercise 6.
+    public Task RunAsync(string arguments, CancellationToken cancellationToken)
+        => throw new NotImplementedException(); // students write this
+}
+```
 
 **Read this carefully.** The git check must not change anything. It asks for status, and never adds or commits. A check that stages a file is a write, and needs approval (Lesson 7).
 

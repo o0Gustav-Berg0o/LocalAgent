@@ -3,8 +3,9 @@
 Work in order. Each exercise ends with a **Checkpoint**.
 
 **Before you start**
+- **Where the code goes:** `Features/Sessions/` for resume, the picker, and their commands. The file format (`SessionHeader`, `SessionEvent`, `SessionWriter`, `SessionReader`) goes in `Shared/Sessions/`, because the loop writes events and the handoff in Lesson 15 reads them.
 - Start from a clean git state, with Lesson 12 working.
-- Decide where sessions live: a folder in the user's application data is the default. Write the path in your README.
+- Sessions live in the `sessions` folder inside the main folder from Module 1, Lesson 1, never in the working folder. Write the path in your README.
 - Start the chat `llama-server`.
 
 ---
@@ -29,16 +30,43 @@ Work in order. Each exercise ends with a **Checkpoint**.
 
 **Do**
 
-1. Create `Sessions/SessionEvent.cs` with a record: a version number, a sequence number, a time, a kind (user, assistant, tool call, tool result, compaction, permission decision), and a payload.
+1. Create `Shared/Sessions/SessionEvent.cs` with a record: a version number, a sequence number, a time, a kind (user, assistant, tool call, tool result, compaction, permission decision), and a payload.
 2. Write the payload as a small set of fields per kind. For example, a tool call has a call identifier, a tool name, and the arguments as text.
 3. Write the file header as the first line: a format name, a format version, the session identifier, and the project folder.
-4. Write a short description of the format in `Sessions/FORMAT.md`, so a student can read a session file with a text editor.
+4. Write a short description of the format in `Shared/Sessions/FORMAT.md`, so a student can read a session file with a text editor.
 
 Here is one event line, shown for orientation. The exact fields are yours to decide:
 
 ```json
 {"v":1,"seq":4,"time":"2026-11-25T10:14:02Z","kind":"tool_result","callId":"c7","tool":"read_file","text":"  1: namespace Demo;\n  2: ...","bytes":412}
 ```
+
+Start from this shell:
+
+```csharp
+using System.Text.Json.Nodes;
+
+namespace LocalAgent.Shared.Sessions;
+
+public static class EventKind
+{
+    public const string User = "user";
+    public const string Assistant = "assistant";
+    public const string ToolCall = "tool_call";
+    public const string ToolResult = "tool_result";
+    public const string Compaction = "compaction";
+    public const string Permission = "permission";
+}
+
+// The first line of every session file.
+public record SessionHeader(string Format, int FormatVersion, string SessionId, string ProjectFolder);
+
+// One line per event. Payload holds the fields for this kind (step 2), for example
+// callId, tool and text for a tool result. Kept as JSON so new fields need no new type.
+public record SessionEvent(int V, long Seq, DateTimeOffset Time, string Kind, JsonObject Payload);
+```
+
+The example line above writes the payload fields next to the others, on one level. Decide whether your file keeps them flat, as in the example, or under a `payload` key, and write the choice in `FORMAT.md`.
 
 **Read this carefully.** The `bytes` field is a size, not the content. The rule of Section 3.4 says that large content is referenced, not copied. Decide, for each kind of event, whether its text is stored or only its size and fingerprint.
 
@@ -52,9 +80,38 @@ Here is one event line, shown for orientation. The exact fields are yours to dec
 
 **Do**
 
-1. Create `Sessions/SessionWriter.cs`. It opens the session file in append mode, writes one event as one line, and flushes it.
+1. Create `Shared/Sessions/SessionWriter.cs`. It opens the session file in append mode, writes one event as one line, and flushes it.
 2. Use one writer per session. When a session opens, check whether a lock file exists. If it does, refuse to open the session, and say another window may be using it.
 3. Write the event before the app acts on it where possible. A tool result is written before it is sent to the model, so a crash after the send can be recovered.
+
+Start from this shell:
+
+```csharp
+namespace LocalAgent.Shared.Sessions;
+
+public sealed class SessionWriter : IDisposable
+{
+    // Creates the lock file next to the session file. Throws a clear error if it already exists:
+    // another window may be using the session (step 2).
+    public SessionWriter(string sessionPath, SessionHeader? headerForNewFile)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+
+    // One event, one line, a line break at the end, then flush.
+    // Returns the error text if the write failed, or null. The event stays in memory either way.
+    public string? Append(SessionEvent sessionEvent)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+
+    // Closes the file and removes the lock file.
+    public void Dispose()
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Read this carefully.** The write must end with a line break, and must be flushed. A line without its break is the damage a crash leaves, and the reader must recognise it.
 
@@ -70,9 +127,29 @@ Here is one event line, shown for orientation. The exact fields are yours to dec
 
 **Do**
 
-1. Create `Sessions/SessionReader.cs`. It reads the file line by line, parses each line, and keeps the events that parse.
+1. Create `Shared/Sessions/SessionReader.cs`. It reads the file line by line, parses each line, and keeps the events that parse.
 2. A line that does not parse is skipped, and counted. At the end, report "N lines could not be read" with the line numbers.
 3. The header is checked first. A header with a newer format version is refused, with a message that names both versions.
+
+Start from this shell:
+
+```csharp
+namespace LocalAgent.Shared.Sessions;
+
+public record SessionFile(SessionHeader Header, IReadOnlyList<SessionEvent> Events, IReadOnlyList<int> DamagedLines);
+
+public static class SessionReader
+{
+    public const int SupportedFormatVersion = 1;
+
+    // Reads line by line. Line 1 is the header: a newer FormatVersion is refused with a message
+    // that names both versions. A line that does not parse is skipped, and its number recorded.
+    public static (SessionFile? File, string? Error) Read(string sessionPath)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Checkpoint:** edit one line of a session file to be invalid JSON. Opening the session shows the warning with the line number, and the other events are present.
 
@@ -84,9 +161,28 @@ Here is one event line, shown for orientation. The exact fields are yours to dec
 
 **Do**
 
-1. Create `Sessions/Resume.cs`. It takes the events and builds the working history, in the same order, with the same roles as during the session.
+1. Create `Features/Sessions/Resume.cs`. It takes the events and builds the working history, in the same order, with the same roles as during the session.
 2. Check validity: every tool call has a result, and every result has a call. For a call with no result, add a result that says "not recorded: the session ended before the tool finished", so the history can still be sent. Print a line saying this was done.
 3. Do not replay tool calls. A resume shows the record, and the next question gets fresh results.
+
+Start from this shell. Exercise 7 adds the compaction rule:
+
+```csharp
+using Microsoft.Extensions.AI;
+
+namespace LocalAgent.Features.Sessions;
+
+public static class Resume
+{
+    // Builds the working history from the events: same order, same roles. Never runs a tool.
+    // A call with no result gets the "not recorded" result from step 2, and its call id is
+    // listed in Repaired so the caller can print a line about it.
+    public static (List<ChatMessage> History, IReadOnlyList<string> Repaired) Build(IReadOnlyList<SessionEvent> events)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Read this carefully.** Never run a tool again during a resume. A write that was approved last week must not happen again because the session was opened. The resume is a reading, not a repeat.
 
@@ -102,10 +198,30 @@ Here is one event line, shown for orientation. The exact fields are yours to dec
 
 **Do**
 
-1. Create `Sessions/SessionIndex.cs` that lists sessions in the sessions folder. For each, read only the header and the first user message, not the whole file, so the list is fast.
+1. Create `Features/Sessions/SessionIndex.cs` that lists sessions in the sessions folder. For each, read only the header and the first user message, not the whole file, so the list is fast.
 2. Show the date of the last event, the first user message cut to one line, the number of user turns, and the project folder. Sort by the last event's time.
 3. Add `/resume` with no argument to show the picker, and `/resume <number>` to open one. Sessions with no user message are not listed.
 4. Check the time of the last event, not the file's modification time, for the sort order (Gotcha 4.4).
+
+Start from this shell:
+
+```csharp
+namespace LocalAgent.Features.Sessions;
+
+public record SessionSummary(string Path, DateTimeOffset LastEvent, string FirstUserMessage, int UserTurns,
+    string ProjectFolder);
+
+public static class SessionIndex
+{
+    // One summary per session file that has a user message, newest LastEvent first.
+    // Reads the header, the first user message, and the last line, not every event (step 1).
+    // Counting UserTurns needs a pass over the lines; parse only the "kind" field for that.
+    public static IReadOnlyList<SessionSummary> List(string sessionsFolder)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Checkpoint:** create three sessions with different first messages, and check that the picker lists them in the right order with the right first messages.
 

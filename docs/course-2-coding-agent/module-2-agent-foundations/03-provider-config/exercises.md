@@ -3,6 +3,7 @@
 Work in order. Each exercise ends with a **Checkpoint**.
 
 **Before you start**
+- **Where the code goes:** `Shared/Providers/` for the provider interface and both providers, because the loop and later slices use them. `ConfigValidator` goes in `Shared/Config/`, and the new `AtomicFile` in `Shared/Files/`.
 - Start from a clean git state, with the Lesson 2 streaming loop working.
 - Start the chat `llama-server` on port 8080. Note the context size you started it with. You will need it in Exercise 6.
 - Keep your Lesson 1 table of hardcoded values to hand.
@@ -37,15 +38,15 @@ Work in order. Each exercise ends with a **Checkpoint**.
 
 **Do**
 
-1. Create `Providers/IChatProvider.cs`. Give it one method for a streaming answer, taking the history and the tool list, and returning the stream of updates. Use the same types as the loop, so the loop does not change its shape.
-2. Create `Providers/LocalLlamaProvider.cs` that implements the interface, and takes the endpoint, model name, and timeout as constructor parameters. It creates the server client inside itself.
+1. Create `Shared/Providers/IChatProvider.cs`. Give it one method for a streaming answer, taking the history and the tool list, and returning the stream of updates. Use the same types as the loop, so the loop does not change its shape.
+2. Create `Shared/Providers/LocalLlamaProvider.cs` that implements the interface, and takes the endpoint, model name, and timeout as constructor parameters. It creates the server client inside itself.
 3. Change `AgentLoop` so that its constructor takes an `IChatProvider`, not a client. Remove the server client import from `AgentLoop.cs`.
 4. In `Program.cs`, construct the `LocalLlamaProvider` and pass it to the loop.
 
 Here is the shape of the interface. Fill in the types from your project:
 
 ```csharp
-namespace LocalAgent.Providers;
+namespace LocalAgent.Shared.Providers;
 
 // The only thing the loop knows about a model server.
 public interface IChatProvider
@@ -55,6 +56,32 @@ public interface IChatProvider
         IEnumerable<ChatMessage> history,
         IList<AITool> tools,
         CancellationToken cancellationToken);
+}
+```
+
+And the shape of the provider. Create the server client the same way `Program.cs` does now, then move that code here:
+
+```csharp
+using Microsoft.Extensions.AI;
+
+namespace LocalAgent.Shared.Providers;
+
+// The only class that knows the server client library. Keep the client in a private field.
+public sealed class LocalLlamaProvider : IChatProvider
+{
+    public LocalLlamaProvider(string endpoint, string model, TimeSpan timeout)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+
+    // Puts the tools in ChatOptions and returns the client's streaming sequence.
+    public IAsyncEnumerable<ChatResponseUpdate> StreamAsync(
+        IEnumerable<ChatMessage> history,
+        IList<AITool> tools,
+        CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException(); // students write this
+    }
 }
 ```
 
@@ -73,9 +100,31 @@ public interface IChatProvider
 
 **Do**
 
-1. Create `Providers/FakeProvider.cs` that implements the same interface. It returns a fixed answer, streamed as two or three pieces, and it never makes a network call.
+1. Create `Shared/Providers/FakeProvider.cs` that implements the same interface. It returns a fixed answer, streamed as two or three pieces, and it never makes a network call.
 2. Add a command-line flag `--fake` to `Program.cs`. When the flag is present, the app uses the fake provider instead of the local one.
 3. Run `dotnet run -- --fake`, and ask a question. The answer should be the fixed text, and the loop should print it as before.
+
+Start from this shell:
+
+```csharp
+using Microsoft.Extensions.AI;
+
+namespace LocalAgent.Shared.Providers;
+
+// Streams a fixed answer in two or three pieces. Never makes a network call.
+public sealed class FakeProvider(string answer = "This answer comes from the fake provider.") : IChatProvider
+{
+    // One ChatResponseUpdate per piece, with the assistant role.
+    // An async iterator (async IAsyncEnumerable<T> with yield return) is the shortest way.
+    public IAsyncEnumerable<ChatResponseUpdate> StreamAsync(
+        IEnumerable<ChatMessage> history,
+        IList<AITool> tools,
+        CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Observe**
 - What did you test with the fake provider that you could not have tested with the real server? What did you not test?
@@ -120,6 +169,36 @@ timeoutSeconds   int      300                  10 to 3600                       
 1. Extend the `AppConfig` record from Module 1, Lesson 1 with any field from your design that is not yet there.
 2. Make sure `ConfigStore.Load()` returns defaults when the file does not exist, as in Module 1.
 3. Make sure `ConfigStore.Save()` writes indented JSON, and writes to a temporary file first, then renames it. This is the same rule as the download in Module 1, applied to the config, so a crash during a write cannot leave a half-written file.
+
+The new fields and the new `Save`:
+
+```csharp
+public record AppConfig(
+    // ...every field from Module 1, Lesson 1...
+    int TimeoutSeconds          // new, from config-design.md. Give it a value in Defaults too.
+);
+
+// In ConfigStore, Save becomes: serialize with the options from Module 1, then AtomicFile.Write.
+```
+
+The temporary-file rule goes in one shared helper. The settings store (Lesson 4) and the plan file (Lesson 14) reuse it, and the write tools (Lesson 7) build their extra checks around the same idea:
+
+```csharp
+// Shared/Files/AtomicFile.cs
+namespace LocalAgent.Shared.Files;
+
+public static class AtomicFile
+{
+    public static void Write(string path, byte[] content)
+    {
+        var tempPath = path + ".tmp";
+        // 1. Write content to tempPath, in the same folder as path.
+        // 2. File.Move(tempPath, path, overwrite: true). The replace is one step.
+        // 3. On any exception: delete tempPath if it exists, then rethrow. The old file is untouched.
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 4. Replace every value from Exercise 0 that is marked **move to config** with a read from the loaded config.
 5. Delete the copies marked **delete (duplicate)**.
 
@@ -136,7 +215,23 @@ timeoutSeconds   int      300                  10 to 3600                       
 
 **Do**
 
-1. Create `Settings/ConfigValidator.cs`. It takes the loaded config and returns two things: a corrected config, and a list of warnings. Each warning names the field, the value that was rejected, and the default that was used.
+1. Create `Shared/Config/ConfigValidator.cs`. It takes the loaded config and returns two things: a corrected config, and a list of warnings. Each warning names the field, the value that was rejected, and the default that was used. Move the rules from `ConfigStore.Validate` (Module 1) here, so there is one place for them:
+
+```csharp
+namespace LocalAgent.Shared.Config;
+
+public static class ConfigValidator
+{
+    // One rule per row of config-design.md. Never throws, and never writes the file.
+    // The corrected config is used in memory only, until the user saves.
+    public static (AppConfig Config, IReadOnlyList<string> Warnings) Validate(AppConfig config)
+    {
+        var warnings = new List<string>();
+        // One block per field, in the order of the design table (step 2).
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 2. Write one rule per field, following your design table. A rule looks like this:
 
 ```csharp
@@ -196,6 +291,23 @@ if (!Uri.TryCreate(config.ChatEndpoint, UriKind.Absolute, out var uri)
    - not found (404) → the endpoint path is wrong, usually a missing `/v1`,
    - anything else → show the message, and suggest checking the server log.
 3. Make the provider rethrow a typed exception with this message, so the loop can show it without a stack trace.
+
+Start from these shells:
+
+```csharp
+// The message is for the user: the endpoint, the kind of failure, and one line of advice.
+// The loop catches this type and prints Message only.
+public sealed class ProviderException(string message, Exception inner) : Exception(message, inner);
+
+// In LocalLlamaProvider: the one place that turns a low-level error into a ProviderException.
+private ProviderException Describe(Exception error)
+{
+    // A refused connection, a timeout, a 404, and anything else: map each to the advice in step 2.
+    throw new NotImplementedException(); // students write this
+}
+```
+
+A trap: C# does not allow `yield return` inside a `try` block that has a `catch`. If `StreamAsync` is an async iterator, move to the next update inside the `try`, and `yield return` it after the `try`.
 
 **Checkpoint:** stop the server, ask a question, and read the message. It names the port, says "connection refused", and suggests starting the server. Start the server again and the question works.
 

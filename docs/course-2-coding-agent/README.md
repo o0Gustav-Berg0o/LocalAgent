@@ -14,7 +14,7 @@ A hands-on course in which you build a small, local coding agent in C#, from an 
 
 By the end you will have a console agent that:
 
-- Sets itself up on first start: asks questions, scans the machine, suggests a model, and guides the installation. Nothing is downloaded without your explicit yes.
+- Sets itself up on first start: scans the machine by itself, shows the result for you to verify or change, asks the few questions it cannot answer, suggests a model, and guides the installation. Nothing is downloaded without your explicit yes. Every start asks which folder to work in.
 - Reads and searches files, edits them with your approval, and runs an allowlist of commands.
 - Manages its context window: shows how full it is, and compacts older turns when needed.
 - Remembers things across sessions through a project memory file and saved sessions.
@@ -78,9 +78,14 @@ Each module is a folder. It has an overview (`README.md`) and its lessons inside
 
 Each lesson is planned for about three hours: reading, lab, and reflection. Module 1 and the capstone are longer. Plan a weekend for each module if you work evenings.
 
+## Project layout
+
+The app is organised in feature slices: one folder per feature under `Features/`, and a `Shared/` folder for code that two or more slices use. Logic files never call `Console`; screen files (names ending in `Screen`, `Prompt`, `Menu`, `Wizard`, or `Command`) draw and read input. Each lesson's exercises say which folder its code goes in. The layout and its five rules are in [Module 1, Lesson 1, section 3.10](module-1-setup/01-first-run-setup/README.md). In Module 7, Lesson 21, the logic files move into `LocalAgent.Core` with the same folders and namespaces, and the screen files stay in the console app.
+
 ## Rules that apply throughout
 
 - **Token economy:** keep the system prompt short, truncate tool output and say how much was cut, and load memory and skills only when relevant.
 - **Consent before action:** downloads, writes, and commands need a yes from the user. Reading and scanning do not.
 - **No secrets in files:** the config file and memory files hold non-secret values only.
 - **Measure every change:** each lesson that changes behaviour adds to the eval set or runs it, so you can see the effect in numbers.
+- **Code shells, not solutions:** each exercise shows the types and method signatures you write, with comments on what each part must do. The bodies throw `NotImplementedException`, so the project builds while you work. You write the bodies.

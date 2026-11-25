@@ -3,6 +3,7 @@
 Work in order. Each exercise ends with a **Checkpoint**.
 
 **Before you start**
+- **Where the code goes:** `Features/Context/`. `ContextMeter` and `TokenEstimator` go in `Shared/Context/`, because memory, notes, skills, and subagents measure size too.
 - Start from a clean git state, with Module 3 working.
 - Start the chat `llama-server`. Note the context size you started it with (Lesson 3's `serverContextSize`).
 - Find out whether your server reports input token counts in its responses. Send one request and inspect the response fields. Write down what you find, even if it is "no count reported".
@@ -34,9 +35,31 @@ Work in order. Each exercise ends with a **Checkpoint**.
 
 **Do**
 
-1. Create `Context/ContextMeter.cs`. It computes the characters of each part of a request: the system prompt, the tool descriptions, the memory (empty for now), the history, and the tool results inside the history.
+1. Create `Shared/Context/ContextMeter.cs`. It computes the characters of each part of a request: the system prompt, the tool descriptions, the memory (empty for now), the history, and the tool results inside the history.
 2. Separate tool results from other history, by the message role (Module 2, Lesson 2). A tool message counts as a tool result.
 3. Return the five numbers as a record. Do not return a single total; the parts are the point.
+
+Start from this shell:
+
+```csharp
+using Microsoft.Extensions.AI;
+
+namespace LocalAgent.Shared.Context;
+
+// Characters per part. Each message is counted once, in one part.
+public record ContextParts(int SystemPrompt, int ToolDescriptions, int Memory, int History, int ToolResults);
+
+public static class ContextMeter
+{
+    // System messages go to SystemPrompt, tool messages to ToolResults, all others to History.
+    // Tool descriptions are measured from the registered tools: name, description, and parameters.
+    public static ContextParts Measure(IReadOnlyList<ChatMessage> history, IReadOnlyList<AITool> tools,
+        string memoryText)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Read this carefully.** The tool results are inside the history. If you count them twice (once in history, once as a separate part), the budget is wrong by the size of every file read. Count each message once, and assign it to one part.
 
@@ -50,9 +73,32 @@ Work in order. Each exercise ends with a **Checkpoint**.
 
 **Do**
 
-1. Create `Context/TokenEstimator.cs` with a method that converts characters to an estimated token count. Start with four characters per token, and keep the divisor in one named constant.
+1. Create `Shared/Context/TokenEstimator.cs` with a method that converts characters to an estimated token count. Start with four characters per token, and keep the divisor in one named constant.
 2. Write in a comment what the estimate is good for and what it is not. Include the Swedish and code caveats from the README (section 3.3).
 3. Add a method that returns the estimate for the whole request, as the sum of the five parts.
+
+Start from this shell:
+
+```csharp
+namespace LocalAgent.Shared.Context;
+
+// What the estimate is good for, and what it is not: (write it here, step 2).
+public static class TokenEstimator
+{
+    public const double CharactersPerToken = 4.0;
+
+    public static int Estimate(int characters)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+
+    // The sum of the five parts, each estimated on its own.
+    public static int Estimate(ContextParts parts)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Checkpoint:** the estimate for the Exercise 0 request is within the same order of magnitude as the server's reported count, if your server reports one. If the difference is more than a factor of two, write the difference down. Do not change the constant yet.
 
@@ -65,9 +111,33 @@ Work in order. Each exercise ends with a **Checkpoint**.
 **Do**
 
 1. If your server reports input tokens, read the count from each response. If it does not, implement the calibrator anyway and test it with recorded numbers (write the numbers in a file for the test).
-2. Create `Context/Calibrator.cs`. For each response with a count, compute the ratio of the reported count to the estimate for that request.
+2. Create `Features/Context/Calibrator.cs`. For each response with a count, compute the ratio of the reported count to the estimate for that request.
 3. Keep a rolling average of the last ten ratios. Use the average as the correction factor. Store the factor per model name in the config or a small cache file.
 4. Ignore a single ratio that is far from the others (more than three times the average). Write the rule in a comment.
+
+Start from this shell:
+
+```csharp
+namespace LocalAgent.Features.Context;
+
+// One per model name. The outlier rule: (write it here, step 4).
+public sealed class Calibrator(string modelName)
+{
+    public const int Window = 10;
+
+    // Records reported / estimated for one response. An outlier is ignored.
+    public void Add(int reportedTokens, int estimatedTokens)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+
+    // The rolling average of the last Window ratios, or 1.0 before the first ratio.
+    public double Factor => throw new NotImplementedException(); // students write this
+
+    // Stored per model name, in the config or a small cache file (step 3).
+    public void Save() => throw new NotImplementedException(); // students write this
+}
+```
 
 **Read this carefully.** A calibrator learned on code must not be used for Swedish prose without saying so. Store the factor per model, and mention the content kind in the README if you see a difference between kinds of text.
 
@@ -85,6 +155,23 @@ Work in order. Each exercise ends with a **Checkpoint**.
 2. Compute the used share: the corrected estimate divided by the budget, as a percentage, rounded down.
 3. Show it in the status line: the percentage, the used tokens, the budget, and the reserve. Example: `context 42%  (3400 of 7168 tokens, reserve 1024)`.
 4. Make the line update after each answer. Do not update it during streaming; a number that changes every token is noise.
+
+Start from this shell:
+
+```csharp
+namespace LocalAgent.Features.Context;
+
+public record ContextBudget(int ContextSize, int Reserve)
+{
+    public int Available => ContextSize - Reserve;
+
+    // Rounded down. 3400 used of 7168 available gives 47.
+    public int PercentUsed(int usedTokens) => throw new NotImplementedException(); // students write this
+
+    // "context 47%  (3400 of 7168 tokens, reserve 1024)"
+    public string StatusLine(int usedTokens) => throw new NotImplementedException(); // students write this
+}
+```
 
 **Read this carefully.** The budget is the window minus the reserve, so the denominator is 7168 in the example, not 8192. Students often divide by the window, which hides the reserve.
 
@@ -105,6 +192,24 @@ Work in order. Each exercise ends with a **Checkpoint**.
 2. When the used share crosses the warn threshold upward, print a single line: "Context is 70% full. Long answers and file reads will fill it faster."
 3. When it crosses the act threshold, print: "Context is 85% full. Use /compact (coming in Lesson 11) or /clear to free room." At this lesson, the message may name the command without implementing it.
 4. Do not repeat the message while the level stays the same. Repeat it only after the level drops and rises again.
+
+Start from this shell:
+
+```csharp
+namespace LocalAgent.Features.Context;
+
+public enum ContextLevel { Normal, Warn, Act }
+
+public sealed class ThresholdWatcher(int warnPercent, int actPercent)
+{
+    // Returns the message to print when the level rises into Warn or Act, and null otherwise.
+    // It remembers the last level, so staying at a level prints nothing (step 4).
+    public string? Check(int percentUsed)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Read this carefully.** A threshold that prints every turn is ignored after the second turn. The rule is to print on change, not on state. Test it by staying above the threshold for three questions.
 

@@ -3,6 +3,7 @@
 Work in order. Each exercise ends with a **Checkpoint**.
 
 **Before you start**
+- **Where the code goes:** `Features/FileChanges/`, the same slice as Lesson 7, with an `UndoCommand`. `SnapshotStore` goes in `Shared/Files/`, because cowork mode uses it in Lesson 14.
 - Commit the sandbox project. Undo testing depends on a known starting point.
 - Make sure Lesson 7's write tool works.
 - Start the chat `llama-server`.
@@ -32,7 +33,7 @@ Work in order. Each exercise ends with a **Checkpoint**.
 
 **Do**
 
-1. Create `Tools/Edit/ExactReplace.cs`. The method takes the current text, the old text, and the new text, and returns a result: success with the new text, or a refusal with a reason and, where possible, the line numbers of the matches.
+1. Create `Features/FileChanges/ExactReplace.cs`. The method takes the current text, the old text, and the new text, and returns a result: success with the new text, or a refusal with a reason and, where possible, the line numbers of the matches.
 2. Normalise line endings in the file text and in the old text before matching. Remember the file's original line ending, and restore it when returning the text.
 3. Count the matches. Zero matches: refuse with "not found". More than one match: refuse with the line numbers of each match, and "include more surrounding lines".
 4. For zero matches, check whether a version of the old text matches when leading and trailing whitespace is ignored. If it does, say so in the refusal, with the line number. This helps with indentation mistakes (Gotcha 4.2).
@@ -40,6 +41,12 @@ Work in order. Each exercise ends with a **Checkpoint**.
 Here is the outline. The matching is the part to write carefully:
 
 ```csharp
+namespace LocalAgent.Features.FileChanges;
+
+// Success: NewText is set. Refusal: Reason is set, and MatchLines lists 1-based line numbers
+// of the matches (two or more), or of the whitespace-insensitive match (step 4).
+public record ReplaceResult(bool Success, string? NewText, string? Reason, IReadOnlyList<int> MatchLines);
+
 public static class ExactReplace
 {
     public static ReplaceResult Apply(string fileText, string oldText, string newText)
@@ -74,10 +81,34 @@ public static class ExactReplace
 
 **Do**
 
-1. Create `Tools/Edit/EditFileTool.cs` with inputs: the path, the old text, and the new text.
+1. Create `Features/FileChanges/EditFileTool.cs` with inputs: the path, the old text, and the new text.
 2. Resolve the path (Lesson 5). Read the file's current text.
 3. Apply `ExactReplace` in memory. A refusal is returned to the model as a tool result, and nothing is proposed.
 4. On success, create a proposal (Lesson 7) with the new text, and pass it to the review and apply path. The edit does not bypass the approval.
+
+Start from this shell:
+
+```csharp
+using System.ComponentModel;
+
+namespace LocalAgent.Features.FileChanges;
+
+public sealed class EditFileTool(string root)
+{
+    [Description("Write the description yourself, as in Lesson 5: what it does, when to use it, when not to.")]
+    public string EditFile(
+        [Description("File path relative to the project root.")] string path,
+        [Description("The exact text to replace. It must appear once in the file.")] string oldText,
+        [Description("The text to put in its place.")] string newText)
+    {
+        // 1. Resolve the path (Lesson 5) and read the current text.
+        // 2. ExactReplace.Apply. A refusal goes back to the model as the tool result.
+        // 3. Success: WriteProposer.Propose with the new text, then the same review and apply
+        //    path as write_file (Lesson 7). Return what happened, in one line.
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Read this carefully.** An edit is a proposal in disguise. It must go through the same review as a whole-file write, and the diff shown to the user must be the diff of the replaced text. A student who lets an edit write directly has removed the safety of Lesson 7.
 
@@ -96,6 +127,19 @@ public static class ExactReplace
 3. If any edit is refused, refuse the whole set, and report which edit failed and why. Nothing is written.
 4. If all edits succeed, create one proposal for the final text.
 
+Add this to the edit code:
+
+```csharp
+public record EditStep(string OldText, string NewText);
+
+// Applies the steps in order, each to the result of the one before. Stops at the first refusal,
+// and says which step failed (1-based) and why. Nothing is written by this method.
+public static (string? FinalText, string? Refusal) ApplyAll(string fileText, IReadOnlyList<EditStep> edits)
+{
+    throw new NotImplementedException(); // students write this
+}
+```
+
 **Read this carefully.** The second edit must be checked against the text after the first edit, not the original. An edit that adds a line can create a second match for a later edit's old text. Test that case on purpose.
 
 **Checkpoint**
@@ -111,10 +155,40 @@ public static class ExactReplace
 
 **Do**
 
-1. Create `Tools/Undo/SnapshotStore.cs`. It writes snapshots to `.agent/undo/` in the project root, one folder per change, with a file for each changed file and a small manifest.
+1. Create `Shared/Files/SnapshotStore.cs`. It writes snapshots to `.agent/undo/` in the project root, one folder per change, with a file for each changed file and a small manifest.
 2. The manifest records: the change identifier, the time, each resolved path, the fingerprint before the change, and the fingerprint after the change.
 3. Call `SnapshotStore` in the apply step, before the write. If the snapshot cannot be written, refuse the change (Gotcha 4.6).
 4. After the write, record the fingerprint of the new content in the manifest.
+
+Start from this shell:
+
+```csharp
+namespace LocalAgent.Shared.Files;
+
+public record SnapshotFile(string ResolvedPath, string FingerprintBefore, string? FingerprintAfter);
+
+// manifest.json in .agent/undo/<ChangeId>/, next to one copy of each file before the change.
+public record SnapshotManifest(string ChangeId, DateTimeOffset Time, IReadOnlyList<SnapshotFile> Files);
+
+public sealed class SnapshotStore(string projectRoot)
+{
+    // Before the write: copies each file and writes the manifest with FingerprintAfter = null.
+    // Returns null if the snapshot could not be written; the caller then refuses the change.
+    public SnapshotManifest? Record(IReadOnlyList<string> resolvedPaths)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+
+    // After the write: fills in FingerprintAfter for every file in the manifest.
+    public void Complete(SnapshotManifest manifest)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+
+    // Used by /undo (Exercise 5) and by the history limit (Exercise 6).
+    public SnapshotManifest? Latest() => throw new NotImplementedException(); // students write this
+}
+```
 
 **Read this carefully.** Snapshot before writing, never after. A snapshot taken after the write holds the new content, and undo would restore nothing.
 
@@ -128,10 +202,40 @@ public static class ExactReplace
 
 **Do**
 
-1. Create a `/undo` command in `CommandHelper`. It reads the most recent manifest.
+1. Create an `UndoCommand` class (an `ISlashCommand`, Module 1, Lesson 1) in `Features/FileChanges/`, and register it in `Program.cs`. It reads the most recent manifest.
 2. For each file in the manifest, compute the current fingerprint and compare it with the "after" fingerprint.
-3. If every file matches, restore each snapshot, using the atomic write from Lesson 7, and then remove the manifest from the undo history.
+3. If every file matches, restore each snapshot, using `AtomicFile` from Lesson 3, and then remove the manifest from the undo history.
 4. If any file does not match, refuse, and list the files that changed since the agent's change. Offer no restore for them, and say what the user can do: keep the new version, or restore by hand.
+
+Add this to `SnapshotStore`, and call it from `UndoCommand`:
+
+```csharp
+// All or nothing. First checks every file's current fingerprint against FingerprintAfter.
+// Any mismatch: restores nothing, and returns the paths that changed.
+// All match: restores each file with AtomicFile (Lesson 3), then removes the manifest.
+public (bool Restored, IReadOnlyList<string> ChangedSince) Undo(SnapshotManifest manifest)
+{
+    throw new NotImplementedException(); // students write this
+}
+```
+
+And the command:
+
+```csharp
+namespace LocalAgent.Features.FileChanges;
+
+public sealed class UndoCommand(SnapshotStore snapshots, int historyLimit) : ISlashCommand
+{
+    public string Name => "undo";
+    public string Description => "Undo the agent's last change, if the files are as the change left them.";
+
+    // 1. snapshots.Latest(). None: say there is nothing to undo.
+    // 2. snapshots.Undo(manifest). Print what was restored, or the files that changed since.
+    // 3. End with the history limit line from Exercise 6.
+    public Task RunAsync(string arguments, CancellationToken cancellationToken)
+        => throw new NotImplementedException(); // students write this
+}
+```
 
 **Read this carefully.** A partial undo leaves a project inconsistent: one file restored and another not. Check every file first, and restore only if all of them match. This is the all-or-nothing rule from Exercise 3, applied to undo.
 

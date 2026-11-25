@@ -3,6 +3,7 @@
 Work in order. Each exercise ends with a **Checkpoint**.
 
 **Before you start**
+- **Where the code goes:** `Features/Subagents/`.
 - Start from a clean git state, with Lesson 18 working.
 - Use a sandbox project with at least fifteen files, so a search task is worth delegating.
 - Start the chat `llama-server`.
@@ -29,9 +30,25 @@ Work in order. Each exercise ends with a **Checkpoint**.
 
 **Do**
 
-1. Create `Subagents/SubagentSpec.cs` with a record: a name, a task (one sentence with an expected answer form), a list of tool names, a maximum number of tool calls, and a maximum context size in tokens.
+1. Create `Features/Subagents/SubagentSpec.cs` with a record: a name, a task (one sentence with an expected answer form), a list of tool names, a maximum number of tool calls, and a maximum context size in tokens.
 2. Create two specs for the sandbox: `find-mentions`, with the read and search tools only, and `summarise-file`, with the read tool only.
 3. Validate each spec: the tool names must exist, the limits must be in range, and the task must not be empty.
+
+Start from this shell:
+
+```csharp
+namespace LocalAgent.Features.Subagents;
+
+public record SubagentSpec(string Name, string Task, string[] Tools, int MaxToolCalls, int MaxContextTokens)
+{
+    // Returns one message per problem: an unknown tool (named), a limit out of range, an empty task.
+    // An empty list means the spec is valid.
+    public IReadOnlyList<string> Validate(IReadOnlySet<string> knownTools)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Read this carefully.** The task must say what the answer looks like. "Find the files that mention Config, one per line, with the line number of the first mention" is a task. "Look at Config" is not.
 
@@ -45,10 +62,43 @@ Work in order. Each exercise ends with a **Checkpoint**.
 
 **Do**
 
-1. Create `Subagents/SubagentRunner.cs`. It takes a spec and the task inputs, starts a new history with the task as the user message, and runs the loop until the answer or the budget.
+1. Create `Features/Subagents/SubagentRunner.cs`. It takes a spec and the task inputs, starts a new history with the task as the user message, and runs the loop until the answer or the budget.
 2. The subagent's history is separate from the main history. Do not copy the main history into it.
 3. Return a result record: the answer, the evidence list, the status (complete or incomplete), and the number of tool calls.
 4. Add the subagent as a tool to the main agent, named `run_subagent`, whose input is the spec name and the task inputs. The main agent receives the result record as the tool result.
+
+Start from this shell:
+
+```csharp
+using System.ComponentModel;
+
+namespace LocalAgent.Features.Subagents;
+
+public enum SubagentStatus { Complete, Incomplete }
+
+public record SubagentResult(string Answer, IReadOnlyList<string> Evidence, SubagentStatus Status,
+    int ToolCalls, string? StopReason);
+
+public sealed class SubagentRunner(IChatProvider provider, IReadOnlyDictionary<string, SubagentSpec> specs)
+{
+    // A new history with the task as the user message, never a copy of the main history.
+    // The same loop, permission check, and output limits as the main agent, with only the spec's
+    // tools (Exercise 3) and its budgets (Exercise 4).
+    public Task<SubagentResult> RunAsync(SubagentSpec spec, string taskInputs, CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+
+    [Description("Write the description yourself: which tasks are worth a subagent, and which are not.")]
+    public Task<string> RunSubagent(
+        [Description("The name of a subagent spec.")] string spec,
+        [Description("The inputs for its task.")] string inputs)
+    {
+        // Looks up the spec, runs it, and returns the result record as text, status first.
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Read this carefully.** The subagent must run through the same loop, the same permission check, and the same output limits as the main agent. A subagent that bypasses the loop has bypassed every protection in this course.
 

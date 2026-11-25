@@ -48,6 +48,8 @@ Separation makes the core a library with a contract. The frontends use the contr
 
 A test: if a piece of code would need changing for a different screen, it belongs in the frontend. If it would need changing for a different model or a different rule, it belongs in the core.
 
+In this course the boundary is already in the file names. Since Module 1, Lesson 1, logic files never call `Console`, and screen files end in `Screen`, `Prompt`, `Menu`, `Wizard`, or `Command` (Module 1, Lesson 1, section 3.10). In this lesson the logic files move into `LocalAgent.Core`, with the same folders and namespaces, and the screen files stay in the console app, which becomes the first frontend. The few places that are still mixed, such as the loop's streaming output and the working indicator, are what Exercises 0 to 3 find and split.
+
 ### 3.2 Events out
 
 The core reports what happens as a stream of events. Each event is a small, typed record:
@@ -122,9 +124,10 @@ You will:
 1. list what the console does today, and mark each piece as core or frontend,
 2. define the events and commands as types,
 3. move the loop's output to events, and the console's input to commands,
-4. drive the core from a test with scripted commands,
-5. add a second frontend (a plain test harness or a simple second console), and run both,
-6. version the contract and test an old frontend against a new core.
+4. move the logic files into `LocalAgent.Core`, one slice at a time, checking `/eval` after each move,
+5. drive the core from a test with scripted commands,
+6. add a second frontend (a plain test harness or a simple second console), and run both,
+7. version the contract and test an old frontend against a new core.
 
 The details are in [exercises.md](exercises.md).
 

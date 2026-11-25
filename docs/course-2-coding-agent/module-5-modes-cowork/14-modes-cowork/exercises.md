@@ -3,6 +3,7 @@
 Work in order. Each exercise ends with a **Checkpoint**.
 
 **Before you start**
+- **Where the code goes:** `Features/Cowork/`, with a `ModeCommand` and a `RollbackCommand`. It uses `SnapshotStore` and `AtomicFile` from `Shared/Files/`.
 - Start from a clean git state, with Module 4 working.
 - Commit the sandbox project. Cowork mode creates checkpoints, and a clean starting point makes them easy to compare.
 - Start the chat `llama-server`.
@@ -31,10 +32,35 @@ Work in order. Each exercise ends with a **Checkpoint**.
 
 **Do**
 
-1. Create `Modes/AgentMode.cs` with an enum: `Code`, `Cowork`. The current mode is held by the session, not by the config.
+1. Create `Features/Cowork/AgentMode.cs` with an enum: `Code`, `Cowork`. The current mode is held by the session, not by the config.
 2. Add `/mode code` and `/mode cowork`, and `/mode` alone to show the current mode and what it means in one line.
 3. Show the mode in the status line, as a word, not only a colour. Keep it in the status line from Module 2, Lesson 2.
 4. Make a mode switch take effect at the next request. A switch during a streaming answer waits until the answer ends (Module 2, Lesson 4, section 4.4).
+
+Start from this shell:
+
+```csharp
+namespace LocalAgent.Features.Cowork;
+
+public enum AgentMode { Code, Cowork }
+
+// Held by the session, never saved in the config.
+public sealed class ModeState
+{
+    public AgentMode Current { get; private set; } = AgentMode.Code;
+
+    // A switch asked for during an answer waits here, and applies at the next request (step 4).
+    public AgentMode? Pending { get; private set; }
+
+    public void Request(AgentMode mode) => throw new NotImplementedException(); // students write this
+
+    // Called by the loop before each request. Applies Pending, if any.
+    public void ApplyPending() => throw new NotImplementedException(); // students write this
+
+    // One line for /mode: the mode and what it means.
+    public string Describe() => throw new NotImplementedException(); // students write this
+}
+```
 
 **Read this carefully.** A mode switch must not change any permission rule. Write a test that switches the mode and checks that the same request gets the same permission outcome in both modes.
 
@@ -48,11 +74,30 @@ Work in order. Each exercise ends with a **Checkpoint**.
 
 **Do**
 
-1. Create `Modes/PlanParser.cs`. It takes the text of a plan file and returns a list of steps, each with a number, a text, a done flag, and the line it was on.
+1. Create `Features/Cowork/PlanParser.cs`. It takes the text of a plan file and returns a list of steps, each with a number, a text, a done flag, and the line it was on.
 2. Apply the three rules: a step line starts with `- [ ]` or `- [x]`, followed by a number and a dot; steps run in number order; other lines are notes and are ignored.
 3. Return an error for two steps with the same number, and for a step with no number. Do not guess.
 
 Here is one step, parsed into its parts: done is false, number is 2, text is "Write the new loader with the same fields".
+
+Start from this shell:
+
+```csharp
+namespace LocalAgent.Features.Cowork;
+
+// Line is 1-based, so a refusal or a "mark done" can point at the exact line.
+public record PlanStep(int Number, string Text, bool Done, int Line);
+
+public static class PlanParser
+{
+    // The three rules from the README, nothing more. Any error returns no steps:
+    // a plan that does not parse does not run. Errors name the line number.
+    public static (IReadOnlyList<PlanStep> Steps, IReadOnlyList<string> Errors) Parse(string planText)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Read this carefully.** A parser that accepts more than the rules will accept a line a person wrote by mistake, and run it. Keep the rules strict, and test the near misses.
 
@@ -78,6 +123,26 @@ Here is one step, parsed into its parts: done is false, number is 2, text is "Wr
 2. Show the plan in the console, and ask: "Approve this plan? yes = run it, edit = open the file and wait, no = discard."
 3. On yes, start step 1. On edit, wait until the user answers again. On no, discard the plan and return to the prompt.
 
+Start from this shell:
+
+```csharp
+namespace LocalAgent.Features.Cowork;
+
+public enum PlanAnswer { Run, Edit, Discard }
+
+public sealed class PlanFile(string path)   // .agent/plans/<session>.md
+{
+    // Writes the agent's proposal only if PlanParser accepts it. Returns the parse errors, or none.
+    public IReadOnlyList<string> WriteProposal(string proposedText) => throw new NotImplementedException(); // students write this
+
+    // Reads the file again each time (Exercise 6). The approved version is what is on disk now.
+    public (IReadOnlyList<PlanStep> Steps, IReadOnlyList<string> Errors) Read() => throw new NotImplementedException(); // students write this
+
+    // Changes "- [ ]" to "- [x]" on that step's line only, with AtomicFile (Lesson 3).
+    public void MarkDone(PlanStep step) => throw new NotImplementedException(); // students write this
+}
+```
+
 **Read this carefully.** The plan file is written by the app, and the approval is a separate decision. A plan the user has not approved must never run a step. Test the case where the file is edited and then approved: the approved version is the one that runs.
 
 **Checkpoint**
@@ -97,6 +162,45 @@ Here is one step, parsed into its parts: done is false, number is 2, text is "Wr
 3. After the step, take a checkpoint: snapshot every file the step changed, using the snapshot store from Lesson 8, and record the checkpoint's identifier next to the step.
 4. Mark the step done in the plan file, by changing `- [ ]` to `- [x]`. Change only that marker.
 
+Start from this shell:
+
+```csharp
+namespace LocalAgent.Features.Cowork;
+
+public enum GateAnswer { Run, Skip, Stop }
+
+public sealed class CoworkRunner(PlanFile plan, SnapshotStore snapshots)
+{
+    // For each step not done, in number order:
+    //   1. Read the plan again. 2. askGate(step). 3. Run the step through the normal loop.
+    //   4. Checkpoint the changed files. 5. MarkDone, and write the checkpoint id in a note line.
+    // Stops at Stop, at a failed step, or at a stuck step (Exercise 7).
+    // The caller passes GatePrompt.Step as askGate, so this file never reads input itself.
+    public Task RunAsync(Func<PlanStep, CancellationToken, Task<bool>> runStep, Func<PlanStep, GateAnswer> askGate,
+        CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
+
+The two questions are a screen file of their own:
+
+```csharp
+// Features/Cowork/GatePrompt.cs: the screen.
+namespace LocalAgent.Features.Cowork;
+
+public static class GatePrompt
+{
+    // "Approve this plan? yes = run it, edit = open the file and wait, no = discard." (Exercise 3)
+    public static PlanAnswer Plan(TextReader input, TextWriter output) => throw new NotImplementedException(); // students write this
+
+    // "Run step N? yes / skip / stop." Exact words only. Closed input counts as Stop.
+    public static GateAnswer Step(PlanStep step, TextReader input, TextWriter output)
+        => throw new NotImplementedException(); // students write this
+}
+```
+
 **Read this carefully.** The "mark done" change is a write to the plan file. Make it through the same atomic write as Lesson 7, so a crash cannot leave the plan half-edited. A plan file that is damaged is a plan that will not run.
 
 **Checkpoint**
@@ -115,6 +219,18 @@ Here is one step, parsed into its parts: done is false, number is 2, text is "Wr
 1. Add `/rollback <step number>`. It restores the files from the checkpoint taken before that step, using the undo fingerprint check from Lesson 8.
 2. Mark the rolled-back step and every later step as not done in the plan file.
 3. Refuse the rollback if any file changed since the checkpoint, and list the files.
+
+Add this to `CoworkRunner`:
+
+```csharp
+// Restores the checkpoint taken before stepNumber with SnapshotStore.Undo (Lesson 8),
+// for that step and every later done step, newest first. All or nothing.
+// On success, marks those steps not done. On refusal, returns the files that changed.
+public (bool RolledBack, IReadOnlyList<string> ChangedSince) Rollback(int stepNumber)
+{
+    throw new NotImplementedException(); // students write this
+}
+```
 
 **Checkpoint:** run two steps, roll back to step 2, and check that the files match their state before step 2 and that the plan shows steps 2 and later as not done.
 

@@ -3,6 +3,7 @@
 Work in order. Each exercise ends with a **Checkpoint**.
 
 **Before you start**
+- **Where the code goes:** `Features/FileChanges/`. `Fingerprint` goes in `Shared/Files/`, because the download, the undo snapshots, and the handoff check use it.
 - Start from a clean git state. Commit the sandbox project first, so you can restore it after each test.
 - Keep the sandbox project separate from your real work.
 - Start the chat `llama-server`.
@@ -32,16 +33,52 @@ Work in order. Each exercise ends with a **Checkpoint**.
 
 **Do**
 
-1. Create `Tools/Write/WriteProposal.cs`, a record with: the resolved path, the current content (or null if the file does not exist), the proposed content, and the fingerprint of the current content.
-2. Create `Tools/Write/WriteProposer.cs` with a method that takes a path and the proposed content, reads the current file, computes the fingerprint, and returns a `WriteProposal`. It writes nothing.
-3. Create `Tools/Write/WriteApplier.cs` with a method that takes a `WriteProposal` and writes it. It does not ask anyone anything. The approval happens before it is called.
+1. Create `Features/FileChanges/WriteProposal.cs`, a record with: the resolved path, the current content (or null if the file does not exist), the proposed content, and the fingerprint of the current content.
+2. Create `Features/FileChanges/WriteProposer.cs` with a method that takes a path and the proposed content, reads the current file, computes the fingerprint, and returns a `WriteProposal`. It writes nothing.
+3. Create `Features/FileChanges/WriteApplier.cs` with a method that takes a `WriteProposal` and writes it. It does not ask anyone anything. The approval happens before it is called.
 4. Make the `write_file` tool call the proposer, then the permission check, then the applier, in that order, and never skip one.
 
-Here is the shape of the separation:
+Start from these shells:
+
+```csharp
+namespace LocalAgent.Features.FileChanges;
+
+// CurrentContent is null for a new file. CurrentFingerprint is the SHA-256 of the bytes on disk,
+// or WriteProposer.NoFile for a new file (Exercise 3).
+public record WriteProposal(string ResolvedPath, string? CurrentContent, string ProposedContent,
+    string CurrentFingerprint);
+
+public static class WriteProposer
+{
+    public const string NoFile = "no-file";
+
+    // Reads, computes, returns. Never writes. Checks the limits from Exercise 6 first:
+    // a refusal comes back as Refusal, with a message for the model, and no proposal.
+    public static (WriteProposal? Proposal, string? Refusal) Propose(string resolvedPath, string proposedContent)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+
+public enum ApplyResult { Written, FileChanged, FileNowExists, Failed }
+
+public static class WriteApplier
+{
+    // Asks nobody. Rechecks the fingerprint right before the write (Exercise 4),
+    // then writes atomically and verifies (Exercise 5).
+    public static ApplyResult Apply(WriteProposal proposal)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
+
+Here is the shape of the separation, as the tool uses it:
 
 ```csharp
 // Propose: pure with respect to the disk. Reads, computes, returns. Never writes.
-WriteProposal proposal = WriteProposer.Propose(resolvedPath, proposedText);
+var (proposal, refusal) = WriteProposer.Propose(resolvedPath, proposedText);
+if (proposal is null) return refusal!;   // the limit message goes to the model, no prompt
 
 // Review: the permission check and the prompt. Returns the user's answer.
 bool approved = await Permission.ReviewAsync(proposal);
@@ -62,10 +99,34 @@ if (approved) WriteApplier.Apply(proposal);
 
 **Do**
 
-1. Create `Tools/Write/DiffRenderer.cs`. It takes the old lines and the new lines, and returns the diff as text, with context lines and the three markers `  ` (context), `- ` (removed), `+ ` (added).
+1. Create `Features/FileChanges/DiffRenderer.cs`. It takes the old lines and the new lines, and returns the diff as text, with context lines and the three markers `  ` (context), `- ` (removed), `+ ` (added).
 2. Use a line-based diff. A simple approach is the longest common subsequence of lines, which is easy to test on small inputs. If the input is large, use a library, and note the choice.
 3. Limit the diff output to 120 lines. If the diff is longer, show the first 120 lines and say how many more there are.
 4. Keep the file's line endings in the comparison. Split on `\n` and trim a trailing `\r`, and do not treat a changed line ending as a change to the text.
+
+Start from this shell:
+
+```csharp
+namespace LocalAgent.Features.FileChanges;
+
+public static class DiffRenderer
+{
+    public const int MaxLines = 120;
+
+    // Splits on '\n' and removes a trailing '\r', so a line-ending change is not a text change.
+    public static string[] SplitLines(string text)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+
+    // A line diff with contextLines of context around each change, using the markers
+    // "  ", "- ", and "+ ". Cut at MaxLines, with a last line that counts what was not shown.
+    public static string Render(IReadOnlyList<string> oldLines, IReadOnlyList<string> newLines, int contextLines = 2)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Read this carefully.** Students often compare whole strings and get "the whole file changed". Split into lines first. A diff is useful only when it shows a few lines out of many.
 
@@ -84,7 +145,26 @@ if (approved) WriteApplier.Apply(proposal);
 
 1. In `WriteProposer.Propose`, compute the SHA-256 of the file's bytes, or of `null` if the file does not exist, and store it in the proposal.
 2. Write the function so that it reads the bytes, not the text. A text read can change the bytes through encoding handling, and the fingerprint must match the bytes on disk.
-3. Use the same hashing function the download in Module 1 used, so the code is shared.
+3. Use the same hashing function the download in Module 1 used, so the code is shared. If the download computed its hash inline, move that code to one helper now:
+
+```csharp
+namespace LocalAgent.Shared.Files;
+
+public static class Fingerprint
+{
+    // SHA-256 of the bytes, as lowercase hex. Used by the download checksum and the write tools.
+    public static string OfBytes(ReadOnlySpan<byte> bytes)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+
+    // Reads the bytes, not the text (step 2). A missing file gives WriteProposer.NoFile.
+    public static string OfFile(string path)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
 
 **Checkpoint:** two proposals of an unchanged file have the same fingerprint. Change one character in the file, and a new proposal has a different fingerprint.
 
