@@ -4,7 +4,7 @@ Use this list before you mark the lesson complete. Each item is something you ca
 
 ## Layout
 
-- [ ] The RAG code is in slices: `Helpers/` and `Tools/` are gone, and each moved file's namespace matches its folder.
+- [ ] The RAG code is in slices: `Helpers/`, `Tools/` and any `Models/` are gone, and each moved file's namespace matches its folder.
 - [ ] `/eval` gave the same score after the move as before it.
 - [ ] Every logic file I wrote in this lesson is free of `Console`, and every screen file's name says it is one.
 

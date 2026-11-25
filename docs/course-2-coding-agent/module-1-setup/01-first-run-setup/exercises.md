@@ -55,7 +55,7 @@ notes folder          Program.cs:__ and CommandHelper __
 
 ### Part B: put the RAG code in slices
 
-**Why this matters:** the RAG app has one feature, answering from your notes, so folders by role (`Tools/`, `Helpers/`) were enough. This course adds about twenty features, organised as slices (README section 3.10). Moving the existing code first means every lesson after this one adds to a tree that already has one shape. This is a move, not a rewrite: the same method as the RAG course, Lesson 10.
+**Why this matters:** the RAG app has one feature, answering from your notes, so folders by role (`Tools/`, `Helpers/`, `Models/`) were enough. This course adds about twenty features, organised as slices (README section 3.10). Moving the existing code first means every lesson after this one adds to a tree that already has one shape. This is a move, not a rewrite: the same method as the RAG course, Lesson 10.
 
 **Do**
 
@@ -67,19 +67,21 @@ notes folder          Program.cs:__ and CommandHelper __
 | `Tools/NoteTools.cs` or `Helpers/NoteTool.cs` | `Features/Notes/` | the notes tools are one feature |
 | `Tools/UtilityTools.cs` | `Features/Utility/` | the date and calculator tools |
 | `Helpers/CommandHelper.cs` and `Helpers/CommandContext.cs` | `Shared/Commands/` | every slice's commands go through it (Exercise 7) |
-| a settings class such as `SearchSettings`, if you made one | `Shared/Config/` | config records live in one place |
-| `EvalQuestion`, if it has a file of its own | `Features/Eval/` | the eval set is a feature of its own |
+| a parsed-command record such as `Models/ParsedCommand.cs` | `Shared/Commands/` | only the command parser uses it |
+| settings classes such as `SearchSettings` and `AppSettings`, often in `Models/` | `Shared/Config/` | config records live in one place |
+| `EvalQuestion`, if it has a file of its own (often in `Models/`) | `Features/Eval/` | the eval set is a feature of its own |
 | `LocalAgent.Core/` and the MCP server from Lesson 11 | stay as they are | they are separate projects already |
 
 2. For a file the table does not list, ask which feature it serves. One feature: that slice. Two or more, or the loop: `Shared/`.
 3. Change each moved file's namespace to match its folder, for example `LocalAgent.Features.Notes`. Then fix the `using` lines in `Program.cs` and wherever else the build complains. Some IDEs do this for a whole project; in Visual Studio it is called Sync Namespaces.
-4. Move one folder at a time, and build after each move. Change nothing else: no renames, no fixes. A move that also fixes something hides both.
+   - If the build now cannot find a type from `LocalAgent.Core`, such as `Indexer`, the moved file used to find it through its old namespace. The core can use the same namespace as the app's old folder, for example `LocalAgent.Helpers`. Add a `using` line for that namespace, and leave the core's namespaces alone in this exercise.
+4. Move one folder at a time, and build after each move. Change nothing else: no renames, no fixes. A move that also fixes something hides both. Close the moved files' editor tabs first: saving an old tab can write the file back to its old folder, and the build then finds every type twice.
 5. Run `/eval` again.
 
-**Read this carefully.** The RAG commands (`/search`, `/reindex`, `/eval`) and the `record EvalQuestion` at the bottom of `CommandHelper.cs` move with `CommandHelper` for now. Splitting them into the Notes and Eval slices changes code, not only its place, so it is a stretch task at the end of this lab.
+**Read this carefully.** The RAG commands (`/search`, `/reindex`, `/eval`) and the `record EvalQuestion` at the bottom of `CommandHelper.cs` move with `CommandHelper` for now. Splitting them into the Notes and Eval slices changes code, not only its place, so it is a stretch task at the end of this lab. If `EvalQuestion` has a file of its own, it goes to `Features/Eval/` anyway, and `CommandHelper` in `Shared/` then uses a slice. That is the one place `Shared/` points at a slice, and the stretch task removes it.
 
 **Checkpoint**
-- `Helpers/` and `Tools/` are gone.
+- `Helpers/` and `Tools/` are gone, and so is `Models/` if you had one.
 - The app builds, and a notes question gives the same first `[tool]` line as in Part A.
 - `/eval` gives the same score as in Part A.
 
@@ -1032,7 +1034,7 @@ Answer these in writing. There are no right answers, but there are weak ones: a 
 - Add a `--non-interactive` mode that reads answers from a file and never asks. How would it handle the download consent step? Should it ever download without a yes?
 - Add a scan result cache, valid for one day, and a `/setup --rescan` to force a new scan. What must the cache never contain? What happens to a value the user corrected?
 - Write a test that runs the whole wizard with scripted answers and a fake download server. Which parts can you test without a real network?
-- Turn the RAG commands (`/search`, `/reindex`, `/eval`) into `ISlashCommand` classes in `Features/Notes/` and `Features/Eval/`, as in Exercise 7, and remove their cases from `CommandHelper`. Move `EvalQuestion` to `Features/Eval/` at the same time. Check `/eval` before and after.
+- Turn the RAG commands (`/search`, `/reindex`, `/eval`) into `ISlashCommand` classes in `Features/Notes/` and `Features/Eval/`, as in Exercise 7, and remove their cases from `CommandHelper`. Move `EvalQuestion` to `Features/Eval/` at the same time, if it is still in `CommandHelper.cs`. Afterwards nothing in `Shared/` uses a slice. Check `/eval` before and after.
 
 ---
 
