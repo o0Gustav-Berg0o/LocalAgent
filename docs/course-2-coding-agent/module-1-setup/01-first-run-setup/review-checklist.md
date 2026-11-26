@@ -18,7 +18,10 @@ Use this list before you mark the lesson complete. Each item is something you ca
 
 - [ ] The scan runs by itself, before the first question, and prints one tick line per probe.
 - [ ] The scan uses only read-only commands and does not need administrator rights.
-- [ ] The scan makes no network call, runs no program it finds, and checks only the main folder's `models` folder and the app folder for model files.
+- [ ] The scan makes no network call, runs no program it finds, and checks only the known model folders from README section 3.4 for model files, never the whole disk.
+- [ ] I can say, for each known model folder, which tool an end user would have used to fill it.
+- [ ] Model files stored as links show their real size, not 0 GB, and no `mmproj-*` file is listed as a model.
+- [ ] An installed Ollama is reported, and none of its files are listed.
 - [ ] Every external command runs with a timeout, and a timeout does not stop the wizard.
 - [ ] A missing `nvidia-smi` is a normal result, and the wizard continues.
 - [ ] The scanner returns `null` for any fact it cannot read. It never invents a value.
@@ -30,6 +33,9 @@ Use this list before you mark the lesson complete. Each item is something you ca
 - [ ] Every scanned value can be changed, and the value the user confirms or types is the one saved and used.
 - [ ] A capped VRAM value gets a prompt that says it is capped.
 - [ ] A value the user corrected is not silently replaced by a later rescan.
+- [ ] After the table, the wizard always asks about `llama-server` and models. Enter keeps what was found, a typed path is checked and added, and `none` means not installed.
+- [ ] When nothing was found, the question lists every folder the scan looked in.
+- [ ] Answering `none` to both questions gives no error, and the install guide keeps both steps.
 
 ## Folders
 
@@ -60,6 +66,7 @@ Use this list before you mark the lesson complete. Each item is something you ca
 - [ ] The guide only prints text. It starts no process and writes no file.
 - [ ] The printed build matches the detected GPU, and the guide says to choose it from the official release page.
 - [ ] The guide skips the steps the scan already satisfied (`llama-server` found, a matching model file found).
+- [ ] The guide names the `models` and `llama.cpp` folders inside the main folder, and the next `/setup` finds what was put there.
 - [ ] Every path in a printed command is quoted, and tested with a folder that has a space.
 
 ## Downloads

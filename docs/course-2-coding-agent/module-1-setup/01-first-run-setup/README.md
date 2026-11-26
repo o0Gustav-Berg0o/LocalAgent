@@ -106,15 +106,28 @@ The scan must not change anything on the machine. This is a deliberate rule, and
 | GPU name and driver | `Win32_VideoController`, `nvidia-smi` | the build named in the install guide |
 | VRAM | `nvidia-smi`, or `AdapterRAM` as a lower bound | the model suggestion |
 | Free and total disk, per drive | `Get-PSDrive` | checking that a model fits on the main folder's drive |
-| `llama-server` | `where.exe llama-server` | skipping an install step that is not needed |
-| Model files (`*.gguf`) | the main folder's `models` folder and the app folder | offering a model the user already has |
+| `llama-server` | `where.exe llama-server`, then the main folder's `llama.cpp` folder | skipping an install step that is not needed |
+| Model files (`*.gguf`) | the known model folders (table below) | offering a model the user already has |
 | Endpoint ports 8080 and 8081 | `Get-NetTCPConnection -State Listen` | reporting a server that already runs |
+
+**Where the scan looks for models.** The person who installs the finished app is not you. They may have used `llama.cpp`, LM Studio, Ollama, or nothing at all. So the scan checks the folders where those tools keep their models, not only the folders this course uses. Your own machine is the first test case for the list, not the reason for it.
+
+| Source | Folders checked | What is there |
+|---|---|---|
+| This agent | the main folder's `models` folder | models the wizard downloaded |
+| `llama.cpp` downloads (`llama-server -hf`) | `LLAMA_CACHE`, `HF_HUB_CACHE` and `HF_HOME\hub` if they are set; `%USERPROFILE%\.cache\huggingface\hub`; `%LOCALAPPDATA%\llama.cpp` (older builds) | `.gguf` files in `snapshots` subfolders, stored as links (section 5.12) |
+| LM Studio | `%USERPROFILE%\.lmstudio\models`; `%USERPROFILE%\.cache\lm-studio\models` (older versions) | `.gguf` files in publisher and model subfolders |
+| Ollama | `OLLAMA_MODELS` if it is set, otherwise `%USERPROFILE%\.ollama\models` | detected, not listed: Ollama stores models without file names |
+
+A folder that does not exist is skipped. The scan searches each folder and its subfolders, leaves out `mmproj-*` files (vision add-ons, not models), and records each file's path, real size, and source. Anything outside these folders the user types in the next step (section 3.9).
+
+**Important:** these folders belong to other programs, and they change between versions. Before you ship a version of this wizard, check them on a current install of each tool.
 
 Four rules for the scan:
 
 - It makes **no network calls**. Nothing leaves the machine, and nothing is looked up online.
 - It **does not run** any program it finds. It checks that a file exists and reads its name. The only programs it runs are read-only system queries (`nvidia-smi`, PowerShell queries).
-- It **does not search the whole disk** for model files. A full search takes minutes and reads folders the user never meant to share with the agent. A folder the scan should also check is added by the user in the verify step (section 3.9).
+- It **does not search the whole disk** for model files. A full search takes minutes and reads folders the user never meant to share with the agent. It checks the known model folders above, and nothing else. A file somewhere else is typed by the user (section 3.9).
 - It runs **without administrator rights**. A probe that needs them is skipped and shown as unknown.
 
 ### 3.5 The config file
@@ -126,6 +139,7 @@ The wizard writes its answers to one file, for example `settings.json`, in the a
 - **Versioned.** A `"version"` field, so a later release can change the format and still read old files.
 - **Validated on read.** A value that is missing or invalid gets a clear message and a default, not a crash.
 - **Holds the main folder, not the working folder.** The working folder is chosen at each start (section 3.8), so it never goes in this file. The verified hardware values (`ramGb`, `vramGb`) do go in, because the suggestion depends on them. `userSetValues` lists the ones the user corrected.
+- **Holds what is installed.** `llamaServerPath` and `chatModelFile` hold the paths the user confirmed, or `null` when the user said nothing is installed.
 
 An example of what the file might hold (values are illustrative):
 
@@ -137,6 +151,8 @@ An example of what the file might hold (values are illustrative):
   "mainFolder": "C:\\Users\\you\\LocalAgent",
   "ramGb": 32,
   "vramGb": 8,
+  "llamaServerPath": "C:\\Users\\you\\LocalAgent\\llama.cpp\\llama-server.exe",
+  "chatModelFile": "C:\\Users\\you\\LocalAgent\\models\\Qwen3VL-4B-Instruct-Q4_K_M.gguf",
   "chatEndpoint": "http://localhost:8080/v1",
   "chatModel": "qwen3-vl-4b",
   "embeddingEndpoint": "http://localhost:8081/v1",
@@ -164,13 +180,13 @@ Step 5 matters more than it looks. A download that stops halfway, and is left un
 
 The wizard tells the user how to install `llama-server` and where to get a model. For this lesson, the wizard **prints** commands and links. It does not run an installer. Running an installer is a separate decision with its own confirmation, and it is out of scope here. Module 2 (cowork mode) revisits it.
 
-If the scan found `llama-server` or a matching model file, the guide says so and leaves out the step for it.
+If the scan found `llama-server` or a matching model file, the guide says so and leaves out the step for it. If the user said nothing is installed, the guide keeps the step, and names the folder to unzip `llama-server` into: the `llama.cpp` folder inside the main folder. The next scan looks there.
 
 ### 3.8 The main folder and the working folder
 
 Setup asks for one folder. The working folder is chosen at every start. The two are different, and the lesson keeps them apart on purpose.
 
-- **Main folder.** The agent's own space. It holds the files the agent makes for itself: sessions, logs, downloaded models in a `models` subfolder, and a short list of recently used working folders (`recent.json`). The user chooses it once, in setup. The default is `%USERPROFILE%\LocalAgent`.
+- **Main folder.** The agent's own space. It holds the files the agent makes for itself: sessions, logs, downloaded models in a `models` subfolder, `llama-server` in a `llama.cpp` subfolder if the user installs it there, and a short list of recently used working folders (`recent.json`). The user chooses it once, in setup. The default is `%USERPROFILE%\LocalAgent`.
 - **Working folder.** The project the agent reads and edits. This is the project root from Module 2, Lesson 5. The user chooses it at every start. Enter keeps the last one used. It is never stored in `settings.json`, because it changes with each project.
 
 Why keep them apart:
@@ -198,7 +214,11 @@ The scan is an estimate of the machine. Some values are wrong (section 5.1), and
 - Each row shows its value and its source, for example `8 GB (nvidia-smi)`. The user can judge the row from that.
 - **Enter accepts the scan. Typing a row's name changes that row**, and Enter at the row keeps its old value. A corrected value is the one saved and used for the suggestion, and the table shows it marked `(you)`.
 - A capped VRAM value is asked for first, before the rest, with a clear prompt: "VRAM: at least 4 GB (Windows caps this value). Enter keeps 4, or type the value from your GPU's specification."
-- The model-folder row accepts more folders, so the user can point the wizard at a place the scan did not check.
+- **After the table, the wizard asks what is installed**, one question for `llama-server` and one for models. These are the two scans most likely to miss, because the user may keep them anywhere:
+  - `llama-server`: Enter keeps the path the scan found. A typed path to `llama-server.exe` replaces it. `none` means it is not installed.
+  - Models: the wizard lists the files it found, with size and source, and says when Ollama is installed. Enter keeps the list. A typed path to a `.gguf` file, or to a folder that holds some, adds them, and the question is asked again. `none` means no model is installed.
+  - When the scan found nothing, the question lists the places it looked, and Enter means none. The user then knows why nothing was found, and what to type.
+  - `none` is a valid answer, not an error. The install guide keeps the step for it (section 3.7), and the download offer follows.
 - A value the user corrected is listed in `userSetValues` in the config. A later rescan (`/setup --rescan`, a stretch task in the exercises) asks before it replaces that value.
 - Nothing is saved until the wizard reaches its end. Cancelling in the middle leaves the config as it was, the same rule as `/setup`.
 
@@ -249,6 +269,9 @@ show the scan: each value with its source, one tick per probe
   │
   ▼
 verify or change: Enter keeps a value, typing replaces it
+  │
+  ▼
+ask what is installed: llama-server, then models (Enter keeps, a path adds, none = not installed)
   │
   ▼
 ask what the machine cannot answer (purpose, patience, main folder)
@@ -304,9 +327,11 @@ These are the mistakes that cost people hours. Read them before the lab.
 
 **5.9 Re-running setup overwrites real work.** `/setup` must not delete the main folder path or a model choice without asking. Show the current value, and let the user keep it.
 
-**5.10 A scan that reads too much.** A search of the whole disk for `.gguf` files finds every model on the machine, takes minutes, and reads folders the user never meant the agent to see. The scan checks only the main folder's `models` folder and the app folder. A folder beyond those is added by the user, in the verify step.
+**5.10 A scan that reads too much.** A search of the whole disk for `.gguf` files finds every model on the machine, takes minutes, and reads folders the user never meant the agent to see. The scan checks only the known model folders in section 3.4. A file anywhere else is typed by the user, in the question that follows the verify table.
 
 **5.11 One folder playing two roles.** If the main folder and the working folder are the same, the agent indexes its own sessions and downloaded models as project files, and writes its state into the project. The check in section 3.8 refuses this. Without the check, the bug would only show up later, when session files appear in search results.
+
+**5.12 A model file that is 0 bytes.** The Hugging Face cache, where `llama-server -hf` downloads go, stores each `.gguf` file as a link into a `blobs` folder. The link itself is 0 bytes, so a plain size check reports every model as empty, and a size rule would suggest a download the user does not need. Follow the link before reading the size (`FileInfo.ResolveLinkTarget(true)` in .NET). The same folder can hold an `mmproj-*.gguf` file next to a model. It is a vision add-on, not a model, so the scan leaves it out.
 
 ---
 
@@ -328,7 +353,7 @@ These are the mistakes that cost people hours. Read them before the lab.
 
 ## 7. What you will have at the end
 
-- A `/setup` command that scans the machine by itself, shows the result for the user to verify or change, asks the few questions the machine cannot answer, suggests a model, and shows install steps.
+- A `/setup` command that scans the machine by itself, shows the result for the user to verify or change, asks what is installed, asks the few questions the machine cannot answer, suggests a model, and shows install steps.
 - A working-folder question at every start, and `/folder` during a session. The main folder stays apart from it.
 - A download step that only runs after an explicit yes, and only to a temporary file in the `models` folder.
 - A config file that stores non-secret answers, the main folder, and the verified hardware values, and is read on every start.
@@ -342,6 +367,7 @@ These are the mistakes that cost people hours. Read them before the lab.
 - Setup answers "what can this machine run?" once. Settings change single values later. The working folder is chosen at each start and is never a setting.
 - The scan runs first, by itself. It is read-only, makes no network call, runs no program it finds, and needs no admin rights.
 - The user verifies or changes every scanned value before the suggestion is made.
+- Models are looked for in the folders where end users' tools keep them, not across the whole disk. The user can type a path, or say nothing is installed.
 - Model size is estimated from parameters, quantisation, and context. Estimates are labelled as estimates.
 - Downloads need a clear yes after the user sees the source, the name, the size, and the destination.
 - Files go to a temporary name first, and are renamed only when complete.

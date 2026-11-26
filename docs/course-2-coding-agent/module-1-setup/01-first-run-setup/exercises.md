@@ -157,17 +157,37 @@ Get-PSDrive -PSProvider FileSystem | Select-Object Name, Free, Used
 # Is llama-server on the PATH? Prints nothing if it is not.
 where.exe llama-server
 
+# Is it in the main folder's llama.cpp folder? Prints True or False.
+Test-Path "$env:USERPROFILE\LocalAgent\llama.cpp\llama-server.exe"
+
 # Is something already listening on the two endpoint ports?
 Get-NetTCPConnection -State Listen -LocalPort 8080,8081 -ErrorAction SilentlyContinue | Select-Object LocalPort
 
-# Model files in the main folder's models folder. Replace the path with yours if it differs.
-Get-ChildItem -Path "$env:USERPROFILE\LocalAgent\models" -Filter *.gguf -ErrorAction SilentlyContinue | Select-Object Name, Length
+# Model files in the known model folders (README section 3.4). A missing folder prints nothing.
+# If LLAMA_CACHE, HF_HUB_CACHE or HF_HOME is set on your machine, add that folder to the list.
+$modelFolders = @(
+    "$env:USERPROFILE\LocalAgent\models",
+    "$env:USERPROFILE\.cache\huggingface\hub",
+    "$env:LOCALAPPDATA\llama.cpp",
+    "$env:USERPROFILE\.lmstudio\models",
+    "$env:USERPROFILE\.cache\lm-studio\models"
+)
+# Keep only the folders that exist. Get-ChildItem -Recurse on a missing folder does not fail:
+# it searches the parent folder instead, which can mean your whole user profile.
+$modelFolders | Where-Object { Test-Path -LiteralPath $_ } |
+    ForEach-Object { Get-ChildItem -LiteralPath $_ -Recurse -Filter *.gguf -ErrorAction SilentlyContinue } |
+    Select-Object Name, LinkType, Length, DirectoryName
+
+# Is Ollama's model folder there? Its files have no model names, so the scan does not list them.
+Test-Path "$env:USERPROFILE\.ollama\models"
 ```
 
 **Observe**
 - Compare the `AdapterRAM` value with the real VRAM on your card (check the vendor's specification page or the `nvidia-smi` output). If they differ, write down by how much.
 - Which of the commands can fail on some machines? Which need no administrator rights?
 - Why does the `where.exe` check not run `llama-server` to ask its version? (Hint: section 3.4, the rule about programs the scan finds.)
+- If you downloaded models with `llama-server -hf` in the RAG course, they are in the Hugging Face cache. What do `LinkType` and `Length` show for them? Where is the real file, and how big is it? (README section 5.12.)
+- Which of your own models, if any, are outside every folder in the list? An end user can have the same problem. Where in the wizard do they fix it?
 
 **Checkpoint:** you have written down the outputs of all the commands, and you can explain why the `AdapterRAM` value can be wrong (section 5.1 of the README).
 
@@ -190,11 +210,17 @@ public record MachineInfo(
     bool VramIsLowerBound,                       // true when the value comes from AdapterRAM and may be capped at 4 GB
     double? FreeDiskGb,                          // free space on the drive that holds the main folder
     bool HasNvidiaSmi,                           // true if nvidia-smi ran successfully
-    string? LlamaServerPath,                     // null if where.exe found nothing
+    string? LlamaServerPath,                     // null if not on PATH and not in the main folder's llama.cpp folder
     IReadOnlyList<int> PortsInUse,               // endpoint ports (8080, 8081) that already have a listener
-    IReadOnlyList<string> ModelFiles,            // *.gguf files found in the known folders
+    IReadOnlyList<FoundModel> ModelFiles,        // *.gguf files found in the known model folders
+    string? OllamaFolder,                        // Ollama's model folder if it exists; its models are not listed
     IReadOnlyDictionary<string, string> Sources  // fact name -> where it was read, shown in the verify step
 );
+
+// One model file. Source is the name from README section 3.4 ("llama.cpp", "LM Studio",
+// "this agent"), or "you" for a file the user typed. SizeGb is the real file's size,
+// after following a link (README section 5.12), or null if it could not be read.
+public record FoundModel(string Path, double? SizeGb, string Source);
 ```
 
 *Why nullable fields:* a machine can be missing any of these facts. A field that is not nullable forces you to invent a value, and an invented value is worse than "unknown", because the suggestion table will treat it as true.
@@ -213,7 +239,9 @@ namespace LocalAgent.Features.FirstRun;
 
 public static class MachineScanner
 {
-    public static MachineInfo Scan()
+    // mainFolder is the current config's main folder. On a first run that is the default,
+    // %USERPROFILE%\LocalAgent. The scan reads its drive, its models folder, and its llama.cpp folder.
+    public static MachineInfo Scan(string mainFolder)
     {
         // Each helper returns null on failure. None of them throws to the caller.
         // Each helper records its source in the dictionary, and prints one tick line
@@ -224,15 +252,52 @@ public static class MachineScanner
         var ramGb = TryReadRamGb(sources);
         var (gpuName, vramGb, lowerBound, hasSmi) = TryReadGpu(sources);
 
-        // Free disk is measured on the drive of the default main folder (%USERPROFILE%\LocalAgent).
-        // If the user picks another main folder in the verify step, measure again.
-        var freeDiskGb = TryReadFreeDiskGb(sources);
+        // Free disk is measured on the main folder's drive.
+        // If the user picks another main folder in the questions, measure again.
+        var freeDiskGb = TryReadFreeDiskGb(mainFolder, sources);
 
-        // Add the other helpers the same way: TryReadCpu, TryReadLlamaServer,
-        // TryReadPortsInUse, TryReadModelFiles. Each returns a value or null.
+        var llamaServerPath = TryReadLlamaServer(mainFolder, sources);
+        var modelFiles = TryReadModelFiles(mainFolder, sources);
+        var ollamaFolder = TryReadOllamaFolder(sources);
+
+        // Add the other helpers the same way: TryReadCpu, TryReadPortsInUse.
+        // Each returns a value or null.
         // ...
 
         return new MachineInfo(osName, /* ...every other fact, in the record's order... */ sources);
+    }
+
+    // where.exe llama-server first. If it finds nothing, <mainFolder>\llama.cpp\llama-server.exe.
+    // Check that the file exists. Never run it (README section 3.4).
+    private static string? TryReadLlamaServer(string mainFolder, Dictionary<string, string> sources)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+
+    // The known model folders, in the order of the table in README section 3.4, as
+    // (source name, folder). Read the environment variables here. Leave out a variable
+    // that is not set, and leave out duplicates. The folders do not have to exist.
+    // Public, because the question in Part F lists them when nothing was found.
+    public static IReadOnlyList<(string Source, string Folder)> ModelFolders(string mainFolder)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+
+    // Every *.gguf file in each existing folder from ModelFolders, including subfolders.
+    // Leave out mmproj-* files. A file can be a link: read the size of the file it points to
+    // (README section 5.12). A folder that cannot be read is recorded in sources and skipped.
+    // Use Directory.EnumerateFiles, not Get-ChildItem through TryRun: on a missing folder,
+    // Get-ChildItem -Recurse searches the parent folder instead (see the comment in Part A).
+    private static IReadOnlyList<FoundModel> TryReadModelFiles(string mainFolder, Dictionary<string, string> sources)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+
+    // OLLAMA_MODELS if it is set, otherwise %USERPROFILE%\.ollama\models. The folder if it exists,
+    // otherwise null. Its files are not read.
+    private static string? TryReadOllamaFolder(Dictionary<string, string> sources)
+    {
+        throw new NotImplementedException(); // students write this
     }
 
     private static double? TryReadRamGb(Dictionary<string, string> sources)
@@ -277,7 +342,7 @@ public static class MachineScanner
 3. **Print one tick line per probe.** For example `[ok] total RAM 32 GB (Win32_ComputerSystem)` or `[--] llama-server not found`. The user watches the scan, not a blank screen. The scan must finish in under 30 seconds on a normal machine.
 4. **Record the source of every value.** Put it in the `Sources` dictionary, for example `"VRAM" = "nvidia-smi"` or `"VRAM" = "AdapterRAM, capped at 4 GB"`. Section 3.9 of the README says why.
 
-**Checkpoint:** run `MachineScanner.Scan()` from a temporary console entry point (or a unit test). It must return a `MachineInfo` on your machine, with a value for every fact you can read, and `null` for any you cannot. Compare the result with the Part A outputs, and check that each value has a source.
+**Checkpoint:** run `MachineScanner.Scan(...)` with the default main folder, `%USERPROFILE%\LocalAgent`, from a temporary console entry point (or a unit test). It must return a `MachineInfo` on your machine, with a value for every fact you can read, and `null` for any you cannot. Compare the result with the Part A outputs, and check that each value has a source. Every model file Part A found is in `ModelFiles`, with its real size, not 0 GB, and no `mmproj-*` file is in the list.
 
 ### Part D: test the failure paths
 
@@ -310,7 +375,10 @@ public static class ScanRows
 
     // Checks one typed value for one row. Returns the updated facts, or an error to show.
     // RAM and VRAM: a positive number. A typed VRAM value sets VramIsLowerBound to false.
-    // "Model folders": an existing folder. Its *.gguf files (not its subfolders) join ModelFiles.
+    // "llamaServerPath" (Part F): "none" sets it to null. Otherwise an existing file named llama-server.exe.
+    // "modelFiles" (Part F): "none" empties the list. A .gguf file joins ModelFiles with Source "you".
+    //   A folder: its *.gguf files and subfolders, without mmproj-* files, join the same way.
+    //   A path with no .gguf file in it is an error, with the path in the message.
     public static (MachineInfo Info, string? Error) Apply(MachineInfo info, string key, string typed)
     {
         throw new NotImplementedException(); // students write this
@@ -347,12 +415,14 @@ Scan result                                      Source
   GPU             NVIDIA GeForce RTX 3070        nvidia-smi
   VRAM            8 GB                           nvidia-smi
   Free disk (C:)  212 GB                         Get-PSDrive
-  llama-server    not found                      where.exe
-  Model folders   C:\Users\you\LocalAgent\models (no files)
+  llama-server    not found                      where.exe, main folder
+  Models          2 files, 2.9 GB                llama.cpp downloads
   Ports in use    none                           Get-NetTCPConnection
 
 Type a row name to change it, or press Enter to accept:
 ```
+
+The `llama-server` and `Models` rows are shown here but changed in Part F, which always follows this screen.
 
 **Checkpoint:** drive `Review` with a `StringReader`:
 - `"\n"` (Enter at once) returns the scan unchanged, and `ChangedByUser` is empty.
@@ -360,6 +430,62 @@ Type a row name to change it, or press Enter to accept:
 - `"ram\nlots\n16\n\n"` refuses `lots` and asks again.
 - A `MachineInfo` with `VramIsLowerBound = true` gets the VRAM question first.
 - An empty `StringReader` (closed input) returns `null`, with no exception.
+
+### Part F: ask what is installed
+
+The scan is most likely to miss `llama-server` and the models, because the user can keep them anywhere. So after the verify table, the wizard always asks about these two (README section 3.9). The user keeps what was found, types a path, or says nothing is installed. `none` is a normal answer: the install guide and the download offer handle it later.
+
+Create the screen file `Features/FirstRun/InstalledPrompt.cs`. The checks go through `ScanRows.Apply` from Part E, so this file only asks and prints.
+
+```csharp
+// Features/FirstRun/InstalledPrompt.cs: the screen.
+namespace LocalAgent.Features.FirstRun;
+
+public static class InstalledPrompt
+{
+    // Takes the result of ScanReviewScreen.Review and returns it with these two answers added.
+    // A changed answer adds "llamaServerPath" or "modelFiles" to ChangedByUser.
+    //
+    // 1. llama-server. Found:     "llama-server [C:\...\llama-server.exe]:"
+    //                  Not found: "llama-server was not found on PATH or in <main>\llama.cpp.
+    //                              Type the path to llama-server.exe, or press Enter if it is not installed:"
+    //    Enter keeps the scan's answer. A typed value goes through ScanRows.Apply("llamaServerPath", ...).
+    // 2. Models. List ModelFiles, numbered, with name, size and source. If OllamaFolder is set, say
+    //    that Ollama is installed and its models are not listed (README section 3.4).
+    //    Files found:    "Enter keeps this list. Type a path to add a .gguf file or a folder, or 'none':"
+    //    Nothing found:  list MachineScanner.ModelFolders(mainFolder), then
+    //                    "Type a path to a .gguf file or a folder, or press Enter if you have no model:"
+    //    A typed path goes through ScanRows.Apply("modelFiles", ...). On success, show the list
+    //    again and ask again. On an error, show it and ask again. Enter ends the question.
+    //    "none" also goes through Apply, which empties the list, and it ends the question.
+    // Returns null if the user types "cancel" or the input is closed.
+    public static ReviewResult? Ask(ReviewResult reviewed, string mainFolder, TextReader input, TextWriter output)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
+
+What the model question can look like when nothing was found (paths are illustrative):
+
+```text
+No model files found. The scan looked in:
+  C:\Users\you\LocalAgent\models
+  C:\Users\you\.cache\huggingface\hub
+  C:\Users\you\AppData\Local\llama.cpp
+  C:\Users\you\.lmstudio\models
+  C:\Users\you\.cache\lm-studio\models
+Ollama is installed. Its models are stored without file names, so they are not listed.
+Type a path to a .gguf file or a folder, or press Enter if you have no model:
+```
+
+**Checkpoint:** drive `Ask` with a `StringReader`:
+- `"\n\n"` keeps both answers, and `ChangedByUser` is unchanged.
+- With a scan that found both, `"none\nnone\n"` returns `LlamaServerPath = null` and an empty `ModelFiles`, and `ChangedByUser` holds both keys.
+- A typed folder that holds one model and one `mmproj-*` file adds the model only, with `Source = "you"`, and the question is asked again.
+- A typed path that does not exist, or holds no `.gguf` file, is refused with the path in the message, and the question is asked again.
+- With nothing found, the question lists every folder from `ModelFolders`, and Enter returns an empty `ModelFiles`.
+- An empty `StringReader` returns `null`, with no exception.
 
 ---
 
@@ -456,6 +582,8 @@ public record AppConfig(
     string MainFolder,
     double? RamGb,              // from the scan, or the user's correction
     double? VramGb,             // from the scan, or the user's correction
+    string? LlamaServerPath,    // the path the user confirmed in Exercise 2, Part F; null means not installed
+    string? ChatModelFile,      // the model file the wizard uses; null until one is chosen or downloaded
     string ChatEndpoint,
     string ChatModel,
     string EmbeddingEndpoint,
@@ -474,6 +602,8 @@ public record AppConfig(
         MainFolder: Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "LocalAgent"),
         RamGb: null,
         VramGb: null,
+        LlamaServerPath: null,
+        ChatModelFile: null,
         ChatEndpoint: "http://localhost:8080/v1",
         ChatModel: "qwen3-vl-4b",
         EmbeddingEndpoint: "http://localhost:8081/v1",
@@ -583,13 +713,13 @@ public static class InstallGuide
    - **What you need:** `llama-server` (matching your hardware) and one GGUF model file.
    - **Which build:** based on `GpuName`. An NVIDIA card points to the CUDA build, no GPU points to the CPU build, and any other GPU points to the Vulkan build. Say that the user must pick the matching build from the official release page.
    - **Which model:** the kind from the suggestion, with the estimate warning.
-   - **Where to put files:** the `models` folder inside the main folder, quoted, shown as a PowerShell command the user can copy.
+   - **Where to put files:** models in the `models` folder inside the main folder, and the unzipped `llama-server` build in the `llama.cpp` folder inside the main folder. Both are quoted, and shown as PowerShell commands the user can copy. The next scan looks in both folders, so `/setup` finds what the user installed.
 
 3. Write each command as a separate line that can be copied on its own. Do not join commands with `&&` in the printed text, because a user on an older PowerShell may not have it.
 
 4. Add a line at the end: "Run `/setup` again after you have installed these, and the wizard will check the endpoints."
 
-5. Skip what the scan already found. If `LlamaServerPath` is set, print "llama-server found at ..." and leave out the build step. If `ModelFiles` holds a file that fits the suggestion, offer to use it and leave out the download. Do not print a download for something the user already has.
+5. Skip what the scan already found. If `LlamaServerPath` is set, print "llama-server found at ..." and leave out the build step. If `ModelFiles` holds a file whose `SizeGb` fits the suggestion (README section 3.3 gives the rough size per class), offer to use it and leave out the download. More than one fits: list them, and let the user choose. Do not print a download for something the user already has. When the user said `none` in Exercise 2, Part F, the list is empty, and the guide keeps both steps.
 
 **Checkpoint:** run the wizard's guide step with your Exercise 2 output. The text must name the right build for your GPU, mention the estimate, and quote any path that contains a space. Copy one printed command into PowerShell and confirm it runs. Then run it once with a fake `LlamaServerPath` and check that the build step is gone.
 
@@ -743,14 +873,16 @@ public static class SetupWizard
     // nothing except a downloaded model, and that only after its own yes.
     public static Task<AppConfig?> RunAsync(AppConfig current)
     {
-        // 1. MachineScanner.Scan()                         Exercise 2, Part C
+        // 1. MachineScanner.Scan(current.MainFolder)        Exercise 2, Part C
         // 2. ScanReviewScreen.Review(...)                  Exercise 2, Part E. null: return null
-        // 3. Ask purpose, patience, and main folder        current value in brackets (step 4)
-        // 4. ModelSuggester.Suggest(...)                   Exercise 3
-        // 5. InstallGuide.Build(...)                       Exercise 5
-        // 6. Offer the download, GuardedDownload.RunAsync  Exercise 6
-        // 7. Return current with the new values, the verified RAM and VRAM,
-        //    UserSetValues from the review, and SetupCompleted = true
+        // 3. InstalledPrompt.Ask(...)                      Exercise 2, Part F. null: return null
+        // 4. Ask purpose, patience, and main folder        current value in brackets (step 4)
+        // 5. ModelSuggester.Suggest(...)                   Exercise 3
+        // 6. InstallGuide.Build(...)                       Exercise 5. A found model that fits is chosen here
+        // 7. Offer the download, GuardedDownload.RunAsync  Exercise 6. Only if no found model was chosen
+        // 8. Return current with the new values: the verified RAM and VRAM, LlamaServerPath,
+        //    ChatModelFile (the chosen or downloaded file, or null), UserSetValues from steps 2
+        //    and 3, and SetupCompleted = true
         throw new NotImplementedException(); // students write this
     }
 }
@@ -997,6 +1129,12 @@ Work through this table. For each row, write what happened and whether it was co
 | A download interrupted | close the connection halfway (for example with a local server that you stop) | no file under the real name, the `.part` file is removed or reported |
 | No write permission in the target folder | choose a folder you cannot write to | a clear error before the download starts, not after |
 | `llama-server` already listening on port 8080 | start a server on 8080 before the wizard | the wizard says the server is running, offers to use it, and skips the install step for it |
+| `llama-server` not on `PATH` | keep it in a folder that is not on `PATH` and not in the main folder | the scan says where it looked; the typed path is used, saved in `llamaServerPath`, and listed in `userSetValues` |
+| Models only in another tool's folder | download one with `llama-server -hf`, or with LM Studio | the scan lists it with its source and its real size, not 0 GB |
+| A vision add-on next to a model | a folder with a model and an `mmproj-*.gguf` file | only the model is listed |
+| A model outside every known folder | put a `.gguf` file in a folder of your own | the scan does not find it; typing its folder in Part F adds it, marked `you` |
+| Nothing installed | answer `none` to both questions in Part F | no error; the install guide keeps both steps, and the download is offered |
+| Ollama installed | a machine with Ollama's model folder | the wizard says Ollama was found, and lists none of its files |
 | A changed value in the verify step | type `16` at the RAM row | the suggestion uses 16, and `settings.json` stores 16 |
 | Working folder typed as `C:\` | type `C:\` at the working-folder question | refused with a reason, and the question is asked again |
 | Working folder is the main folder | type the main folder's path at the working-folder question | refused with a reason (section 3.8 of the README) |

@@ -19,5 +19,6 @@
 - A `/setup` command that can be re-run safely.
 - A config file the app reads on every start, with no secrets in it.
 - A scan that shows the source of each value, and a verify step where the user can change any of them.
+- A question about what is installed: keep what the scan found, type a path to `llama-server` or a model, or say nothing is installed.
 - A working-folder question at every start, kept apart from the main folder.
 - A download step that never writes until the user has seen the source, the name, the size, and the destination.

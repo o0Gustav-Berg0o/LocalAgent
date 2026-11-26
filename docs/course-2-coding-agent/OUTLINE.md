@@ -30,7 +30,7 @@ A mode is not a setting. Switching modes does not change the model or the permis
 ## Module 0: Setup
 
 ### Lesson 0 — First-run setup
-- **Build:** a setup wizard. An automatic read-only scan (OS, CPU, RAM, GPU and VRAM, free disk, `llama-server`, model files), shown for the user to verify or change. Questions the machine cannot answer (purpose, patience, main folder). A working-folder question at every start. A model suggestion table by hardware class. Guided install: show the commands and links, and download only after the user confirms the source, file name, and size.
+- **Build:** a setup wizard. An automatic read-only scan (OS, CPU, RAM, GPU and VRAM, free disk, `llama-server`, and model files in the folders where end users' tools keep them), shown for the user to verify or change. Then a question about what is installed: keep what was found, type a path, or say nothing is installed. Questions the machine cannot answer (purpose, patience, main folder). A working-folder question at every start. A model suggestion table by hardware class. Guided install: show the commands and links, and download only after the user confirms the source, file name, and size.
 - **Concepts:** read-only scans; why download needs confirmation; first-run versus repeatable setup; main folder versus working folder.
 - **Visual:** a checklist that ticks off each setup step; a progress bar during download.
 - **Note:** model names and quantisations are checked against current listings when the lesson is written.
