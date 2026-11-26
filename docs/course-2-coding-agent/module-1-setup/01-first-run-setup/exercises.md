@@ -120,7 +120,7 @@ notes folder          Program.cs:__ and CommandHelper __
 Question: Where should the agent keep its own files?
 Why we ask: sessions, logs and downloaded models need one known place, and the user should choose it.
 Machine can answer: partly. It can show free disk space on each drive, but not which place the user wants.
-Default: C:\Users\<you>\LocalAgent, shown with its free space.
+Default: the main folder from an earlier scan, if it still exists; otherwise C:\Users\<you>\LocalAgent. Shown with its drive's free space.
 Stored in: settings.json, key "mainFolder".
 ```
 
@@ -208,7 +208,7 @@ public record MachineInfo(
     string? GpuName,                             // null if no GPU was found
     double? VramGb,                              // null if unknown; may be a lower bound (see below)
     bool VramIsLowerBound,                       // true when the value comes from AdapterRAM and may be capped at 4 GB
-    double? FreeDiskGb,                          // free space on the drive that holds the main folder
+    IReadOnlyDictionary<string, double> FreeDiskGbByDrive, // drive root ("C:\") -> free GB, for every ready fixed drive
     bool HasNvidiaSmi,                           // true if nvidia-smi ran successfully
     string? LlamaServerPath,                     // null if not on PATH and not in the main folder's llama.cpp folder
     IReadOnlyList<int> PortsInUse,               // endpoint ports (8080, 8081) that already have a listener
@@ -239,26 +239,28 @@ namespace LocalAgent.Features.FirstRun;
 
 public static class MachineScanner
 {
-    // mainFolder is the current config's main folder. On a first run that is the default,
-    // %USERPROFILE%\LocalAgent. The scan reads its drive, its models folder, and its llama.cpp folder.
-    public static MachineInfo Scan(string mainFolder)
+    // mainFolder is the main folder the wizard already knows: the saved one, or the one from the
+    // earlier scan (Exercise 4, step 6). On a first run there is none, and it is null. Never pass
+    // a default as if the user had chosen it (README section 5.13). With null, the agent's own
+    // models and llama.cpp folders are skipped; CheckMainFolder adds them after the question.
+    // progress receives one tick line per probe (rule 3 below). The screen passes Console.WriteLine.
+    public static MachineInfo Scan(string? mainFolder, Action<string>? progress = null)
     {
         // Each helper returns null on failure. None of them throws to the caller.
-        // Each helper records its source in the dictionary, and prints one tick line
-        // when it finishes. The scanner asks no questions. It returns facts only.
+        // Each helper records its source in the dictionary. The scanner asks no questions,
+        // and never calls Console itself (README section 3.10, rule 3). It returns facts only.
         var sources = new Dictionary<string, string>();
 
         var osName = TryReadOs(sources);
         var ramGb = TryReadRamGb(sources);
         var (gpuName, vramGb, lowerBound, hasSmi) = TryReadGpu(sources);
 
-        // Free disk is measured on the main folder's drive.
-        // If the user picks another main folder in the questions, measure again.
-        var freeDiskGb = TryReadFreeDiskGb(mainFolder, sources);
+        // Every drive, so free space is known for whichever main folder the user picks.
+        var freeDisk = FreeDiskByDrive(sources);
 
-        var llamaServerPath = TryReadLlamaServer(mainFolder, sources);
-        var modelFiles = TryReadModelFiles(mainFolder, sources);
-        var ollamaFolder = TryReadOllamaFolder(sources);
+        var llamaServerPath = FindLlamaServer(mainFolder, sources);
+        var modelFiles = FindModels(ModelFolders(mainFolder), sources);
+        var ollamaFolder = FindOllamaFolder(sources);
 
         // Add the other helpers the same way: TryReadCpu, TryReadPortsInUse.
         // Each returns a value or null.
@@ -267,35 +269,68 @@ public static class MachineScanner
         return new MachineInfo(osName, /* ...every other fact, in the record's order... */ sources);
     }
 
-    // where.exe llama-server first. If it finds nothing, <mainFolder>\llama.cpp\llama-server.exe.
-    // Check that the file exists. Never run it (README section 3.4).
-    private static string? TryReadLlamaServer(string mainFolder, Dictionary<string, string> sources)
+    // ---- Building blocks. Public, so the wizard and later lessons can ask one question
+    // ---- without a full scan (README section 3.4). sources is optional for that reason.
+
+    // where.exe llama-server first. If it finds nothing and mainFolder is not null,
+    // <mainFolder>\llama.cpp\llama-server.exe. Check that the file exists. Never run it.
+    public static string? FindLlamaServer(string? mainFolder, IDictionary<string, string>? sources = null)
     {
         throw new NotImplementedException(); // students write this
     }
 
     // The known model folders, in the order of the table in README section 3.4, as
-    // (source name, folder). Read the environment variables here. Leave out a variable
-    // that is not set, and leave out duplicates. The folders do not have to exist.
-    // Public, because the question in Part F lists them when nothing was found.
-    public static IReadOnlyList<(string Source, string Folder)> ModelFolders(string mainFolder)
+    // (source name, folder). The agent's own models folder only when mainFolder is not null.
+    // Read the environment variables here. Leave out a variable that is not set, and leave out
+    // duplicates. The folders do not have to exist. Part F lists them when nothing was found.
+    public static IReadOnlyList<(string Source, string Folder)> ModelFolders(string? mainFolder)
     {
         throw new NotImplementedException(); // students write this
     }
 
-    // Every *.gguf file in each existing folder from ModelFolders, including subfolders.
-    // Leave out mmproj-* files. A file can be a link: read the size of the file it points to
-    // (README section 5.12). A folder that cannot be read is recorded in sources and skipped.
+    // Every *.gguf file in each of these folders that exists, including subfolders.
+    // Leave out mmproj-* files. Each file's size comes from RealSizeGb. A folder that cannot be
+    // read is recorded in sources and skipped. The scan passes ModelFolders(...); ScanRows.Apply
+    // passes one folder the user typed, with Source "you"; CheckMainFolder passes one folder.
     // Use Directory.EnumerateFiles, not Get-ChildItem through TryRun: on a missing folder,
     // Get-ChildItem -Recurse searches the parent folder instead (see the comment in Part A).
-    private static IReadOnlyList<FoundModel> TryReadModelFiles(string mainFolder, Dictionary<string, string> sources)
+    public static IReadOnlyList<FoundModel> FindModels(
+        IEnumerable<(string Source, string Folder)> folders, IDictionary<string, string>? sources = null)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+
+    // The real file's size in GB, or null. A file can be a link: read the size of the file
+    // it points to (README section 5.12).
+    public static double? RealSizeGb(string path)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+
+    // Free GB per drive root, for every ready fixed drive (DriveInfo.GetDrives()).
+    public static IReadOnlyDictionary<string, double> FreeDiskByDrive(IDictionary<string, string>? sources = null)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+
+    // The free GB on the drive that holds folder, from the scan. null if that drive was not read.
+    public static double? FreeDiskGbFor(MachineInfo info, string folder)
     {
         throw new NotImplementedException(); // students write this
     }
 
     // OLLAMA_MODELS if it is set, otherwise %USERPROFILE%\.ollama\models. The folder if it exists,
     // otherwise null. Its files are not read.
-    private static string? TryReadOllamaFolder(Dictionary<string, string> sources)
+    public static string? FindOllamaFolder(IDictionary<string, string>? sources = null)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+
+    // After the main-folder question (Exercise 7). Checks only this folder: its models folder
+    // (models not already in the list are added, Source "this agent") and its llama.cpp folder
+    // (used only if LlamaServerPath is null). Returns the facts and a line for each thing it added,
+    // for the wizard to print. No full scan.
+    public static (MachineInfo Info, IReadOnlyList<string> Added) CheckMainFolder(MachineInfo info, string mainFolder)
     {
         throw new NotImplementedException(); // students write this
     }
@@ -331,18 +366,25 @@ public static class MachineScanner
         throw new NotImplementedException(); // students write this
     }
 
-    // Write TryReadOs, TryReadFreeDiskGb and the rest the same way, each one using TryRun.
+    // Write TryReadOs and the rest the same way, each one using TryRun where it runs a command.
 }
 ```
+
+*Why the building blocks are public:* the full scan is only needed once per setup. The questions after it each need one fact: is there a model in this folder, is there a `llama-server` here, how much space is free on that drive. A method that answers one of them, without side effects and without `Console`, can be called from anywhere: `ScanRows.Apply`, the wizard after the main-folder question, and later lessons.
 
 **Rules to follow when you fill in the helpers:**
 
 1. **Run external commands with a timeout.** A command that hangs must not hang the wizard. Start the process, wait a fixed number of seconds (for example 5), and kill it if it has not finished. The `Process` class and `WaitForExit(milliseconds)` do this.
 2. **Parse, do not trust.** `nvidia-smi` prints `[Not Supported]` for some fields on some drivers. Check each value before you convert it to a number.
-3. **Print one tick line per probe.** For example `[ok] total RAM 32 GB (Win32_ComputerSystem)` or `[--] llama-server not found`. The user watches the scan, not a blank screen. The scan must finish in under 30 seconds on a normal machine.
+3. **Report one tick line per probe, through `progress`.** For example `[ok] total RAM 32 GB (Win32_ComputerSystem)` or `[--] llama-server not found`. The user watches the scan, not a blank screen. `Scan` hands each line to `progress`, and the caller prints it, so the scanner stays free of `Console`. The scan must finish in under 30 seconds on a normal machine.
 4. **Record the source of every value.** Put it in the `Sources` dictionary, for example `"VRAM" = "nvidia-smi"` or `"VRAM" = "AdapterRAM, capped at 4 GB"`. Section 3.9 of the README says why.
 
-**Checkpoint:** run `MachineScanner.Scan(...)` with the default main folder, `%USERPROFILE%\LocalAgent`, from a temporary console entry point (or a unit test). It must return a `MachineInfo` on your machine, with a value for every fact you can read, and `null` for any you cannot. Compare the result with the Part A outputs, and check that each value has a source. Every model file Part A found is in `ModelFiles`, with its real size, not 0 GB, and no `mmproj-*` file is in the list.
+**Checkpoint:** run `MachineScanner.Scan(null, Console.WriteLine)` from a temporary console entry point (or a unit test). That is a first run: no main folder is known yet.
+- It returns a `MachineInfo` on your machine, with a value for every fact you can read, and `null` for any you cannot. Compare the result with the Part A outputs, and check that each value has a source.
+- Every model file Part A found in another tool's folder is in `ModelFiles`, with its real size, not 0 GB, and no `mmproj-*` file is in the list.
+- `FreeDiskGbByDrive` has a value for each of your fixed drives.
+- `ModelFolders(null)` does not contain the agent's own `models` folder. `ModelFolders(@"C:\Test\LocalAgent")` does, first.
+- Make a folder with one `.gguf` file in a `models` subfolder, and call `CheckMainFolder` with it. The file is added with `Source = "this agent"`, and `Added` names it. A second call adds nothing.
 
 ### Part D: test the failure paths
 
@@ -353,6 +395,21 @@ Pretend the commands fail, and check that the scanner still returns. The simples
 ### Part E: show the scan and let the user verify it
 
 The verify screen shows the scan as a table, with the source of each value, and lets the user change any row before anything is suggested or saved (README section 3.9). It is two files, following the split in README section 3.10. `Features/FirstRun/ScanRows.cs` is the logic: the rows, and the check of a typed value. `Features/FirstRun/ScanReviewScreen.cs` is the screen: it prints the table and reads the answers. The screen reads from a `TextReader` and writes to a `TextWriter`, not from `Console` directly, so a test can drive it with scripted input.
+
+The review can start from an earlier scan (README section 3.9). Its record comes first, because `ScanRows` uses it. Exercise 4 saves and loads it; until then, pass `null` wherever a `LastScan?` is asked for.
+
+```csharp
+// Features/FirstRun/LastScan.cs
+namespace LocalAgent.Features.FirstRun;
+
+// The verified scan from the last completed setup, kept in %LOCALAPPDATA%\LocalAgent\last-scan.json.
+public record LastScan(
+    int Version,                // 1; read the same way as settings.json's version
+    DateTimeOffset ScannedAt,   // shown to the user: "Earlier scan from 2026-11-20"
+    string MainFolder,          // the main folder the user confirmed in that setup
+    MachineInfo Info,           // the facts after the user's corrections
+    string[] UserSetValues);    // the keys the user corrected, as in settings.json
+```
 
 ```csharp
 // Features/FirstRun/ScanRows.cs: logic, no Console.
@@ -366,6 +423,15 @@ public record ReviewResult(MachineInfo Info, IReadOnlyList<string> ChangedByUser
 
 public static class ScanRows
 {
+    // Where the review starts. With an earlier scan (Exercise 4, step 6), each key in its
+    // UserSetValues takes the earlier value instead of the new scan's, and goes into ChangedByUser,
+    // so the table marks it "(you)". For "modelFiles", the earlier files with Source "you" that
+    // still exist are added. Without an earlier scan: the scan unchanged, and ChangedByUser empty.
+    public static ReviewResult CarryOver(MachineInfo scanned, LastScan? earlier)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+
     // The rows in the order of the table in README section 3.4.
     // An unknown value is shown as "unknown", never as 0 or an empty string.
     public static IReadOnlyList<ScanRow> ToRows(MachineInfo info, IReadOnlyList<string> changedByUser)
@@ -376,8 +442,9 @@ public static class ScanRows
     // Checks one typed value for one row. Returns the updated facts, or an error to show.
     // RAM and VRAM: a positive number. A typed VRAM value sets VramIsLowerBound to false.
     // "llamaServerPath" (Part F): "none" sets it to null. Otherwise an existing file named llama-server.exe.
-    // "modelFiles" (Part F): "none" empties the list. A .gguf file joins ModelFiles with Source "you".
-    //   A folder: its *.gguf files and subfolders, without mmproj-* files, join the same way.
+    // "modelFiles" (Part F): "none" empties the list. A .gguf file joins ModelFiles with Source "you",
+    //   and its size from MachineScanner.RealSizeGb. A folder: MachineScanner.FindModels with
+    //   [("you", folder)], so the rules are the scan's own. A file already in the list is not added twice.
     //   A path with no .gguf file in it is an error, with the path in the message.
     public static (MachineInfo Info, string? Error) Apply(MachineInfo info, string key, string typed)
     {
@@ -392,13 +459,16 @@ namespace LocalAgent.Features.FirstRun;
 
 public static class ScanReviewScreen
 {
+    // start comes from ScanRows.CarryOver.
+    // 0. If start.ChangedByUser is not empty, print "From your earlier scan: VRAM 8 GB (you set it)."
+    //    with one entry per key, before anything else.
     // 1. If VramIsLowerBound is true, ask for VRAM first, with the capped prompt from section 3.9.
     // 2. Print the table, then ask: "Type a row name to change it, or press Enter to accept:".
     // 3. For a named row, ask "RAM [32 GB]:". Enter keeps the value. A typed value goes through
     //    ScanRows.Apply. On an error, show it and ask again.
     // 4. Print the table again, with changed rows marked "(you)", and repeat from step 2.
     // Returns null if the user types "cancel" or the input is closed. Nothing is saved then.
-    public static ReviewResult? Review(MachineInfo info, TextReader input, TextWriter output)
+    public static ReviewResult? Review(ReviewResult start, TextReader input, TextWriter output)
     {
         throw new NotImplementedException(); // students write this
     }
@@ -414,8 +484,8 @@ Scan result                                      Source
   RAM             32 GB                          Win32_ComputerSystem
   GPU             NVIDIA GeForce RTX 3070        nvidia-smi
   VRAM            8 GB                           nvidia-smi
-  Free disk (C:)  212 GB                         Get-PSDrive
-  llama-server    not found                      where.exe, main folder
+  Free disk       C: 212 GB, D: 850 GB           Get-PSDrive
+  llama-server    not found                      where.exe
   Models          2 files, 2.9 GB                llama.cpp downloads
   Ports in use    none                           Get-NetTCPConnection
 
@@ -424,8 +494,9 @@ Type a row name to change it, or press Enter to accept:
 
 The `llama-server` and `Models` rows are shown here but changed in Part F, which always follows this screen.
 
-**Checkpoint:** drive `Review` with a `StringReader`:
+**Checkpoint:** drive `Review` with a `StringReader`, starting from `ScanRows.CarryOver(info, null)`:
 - `"\n"` (Enter at once) returns the scan unchanged, and `ChangedByUser` is empty.
+- Starting from `CarryOver` with an earlier scan whose `UserSetValues` holds `"vramGb"`: the earlier VRAM is used, the "From your earlier scan" line comes before the table, and the VRAM row shows `(you)`.
 - `"ram\n16\n\n"` returns `TotalRamGb = 16`, `ChangedByUser` holds `"ramGb"`, and the second table shows `16 GB (you)`.
 - `"ram\nlots\n16\n\n"` refuses `lots` and asks again.
 - A `MachineInfo` with `VramIsLowerBound = true` gets the VRAM question first.
@@ -446,9 +517,11 @@ public static class InstalledPrompt
     // Takes the result of ScanReviewScreen.Review and returns it with these two answers added.
     // A changed answer adds "llamaServerPath" or "modelFiles" to ChangedByUser.
     //
+    // mainFolder is the one Scan was given: null on a first run.
     // 1. llama-server. Found:     "llama-server [C:\...\llama-server.exe]:"
-    //                  Not found: "llama-server was not found on PATH or in <main>\llama.cpp.
-    //                              Type the path to llama-server.exe, or press Enter if it is not installed:"
+    //                  Not found: "llama-server was not found on PATH" (and "or in <main>\llama.cpp"
+    //                              when mainFolder is not null), then
+    //                             "Type the path to llama-server.exe, or press Enter if it is not installed:"
     //    Enter keeps the scan's answer. A typed value goes through ScanRows.Apply("llamaServerPath", ...).
     // 2. Models. List ModelFiles, numbered, with name, size and source. If OllamaFolder is set, say
     //    that Ollama is installed and its models are not listed (README section 3.4).
@@ -459,18 +532,17 @@ public static class InstalledPrompt
     //    again and ask again. On an error, show it and ask again. Enter ends the question.
     //    "none" also goes through Apply, which empties the list, and it ends the question.
     // Returns null if the user types "cancel" or the input is closed.
-    public static ReviewResult? Ask(ReviewResult reviewed, string mainFolder, TextReader input, TextWriter output)
+    public static ReviewResult? Ask(ReviewResult reviewed, string? mainFolder, TextReader input, TextWriter output)
     {
         throw new NotImplementedException(); // students write this
     }
 }
 ```
 
-What the model question can look like when nothing was found (paths are illustrative):
+What the model question can look like on a first run when nothing was found (paths are illustrative). No main folder is known yet, so the agent's own `models` folder is not in the list:
 
 ```text
 No model files found. The scan looked in:
-  C:\Users\you\LocalAgent\models
   C:\Users\you\.cache\huggingface\hub
   C:\Users\you\AppData\Local\llama.cpp
   C:\Users\you\.lmstudio\models
@@ -599,6 +671,8 @@ public record AppConfig(
         Version: 1,
         Purpose: "coding",
         Patience: "balanced",
+        // The default answer to the main-folder question, not a folder the user chose.
+        // On a first run the scan gets null, never this value (README section 5.13).
         MainFolder: Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "LocalAgent"),
         RamGb: null,
         VramGb: null,
@@ -666,12 +740,43 @@ if (!Uri.TryCreate(config.ChatEndpoint, UriKind.Absolute, out _))
 
 5. Test the round trip: save, close the app, open `settings.json` in an editor, change `contextSize` to `4096` by hand, start the app, and check the value it reports.
 
+6. **Keep the earlier scan.** `settings.json` disappears when the app is installed again in a new folder, and with it the main folder and the user's corrections. The `LastScan` record from Exercise 2, Part E is saved to `%LOCALAPPDATA%\LocalAgent\last-scan.json` at the end of a completed setup, and read at the start of the next one (README section 3.9). Create `Features/FirstRun/ScanStore.cs` from this shell. It goes in the slice, not in `Shared/Config/`, because only the setup reads it.
+
+```csharp
+using System.Text.Json;
+
+namespace LocalAgent.Features.FirstRun;
+
+public static class ScanStore
+{
+    // The local AppData folder, not the roaming one: a hardware scan belongs to one machine.
+    public static string FilePath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LocalAgent", "last-scan.json");
+
+    // Missing file: (null, null). A file that cannot be parsed, or has a version this app does not
+    // know: (null, a warning), and the file stays on disk untouched. The wizard then runs as a first run.
+    public static (LastScan? Scan, string? Warning) Load()
+    {
+        throw new NotImplementedException(); // students write this
+    }
+
+    // Indented JSON with camelCase names, the same options as ConfigStore. Creates the
+    // LocalAgent folder in LocalAppData if it is missing. Called only after a completed setup.
+    public static void Save(LastScan scan)
+    {
+        throw new NotImplementedException(); // students write this
+    }
+}
+```
+
 **Checkpoint:**
 - The app reads its endpoints and model names from `settings.json`, not from `Program.cs`.
 - The working folder is not in the file.
 - Deleting `settings.json` brings the app back up with the defaults.
 - A file with `"chatEndpoint": "not a url"` produces a warning and uses the default.
 - The file contains no secret values. Search it for the word `key` and confirm there is nothing secret.
+- `ScanStore.Save` then `ScanStore.Load` returns the same `LastScan`, including every `FoundModel` and the free space per drive.
+- A `last-scan.json` that holds `not json` gives `(null, warning)`, and the file is still there afterwards.
 
 **Observe**
 - Which of your Exercise 0 values is missing from the file? Why? (Hint: the working folder is the answer for the notes folder. It is chosen at each start and never stored. The chat model's context length may be a model setting, not an app setting.)
@@ -712,7 +817,7 @@ public static class InstallGuide
 2. The text has four parts, in this order:
    - **What you need:** `llama-server` (matching your hardware) and one GGUF model file.
    - **Which build:** based on `GpuName`. An NVIDIA card points to the CUDA build, no GPU points to the CPU build, and any other GPU points to the Vulkan build. Say that the user must pick the matching build from the official release page.
-   - **Which model:** the kind from the suggestion, with the estimate warning.
+   - **Which model:** the kind from the suggestion, with the estimate warning, and the free space on the main folder's drive from `MachineScanner.FreeDiskGbFor(info, mainFolder)`. If the model's rough size (README section 3.3) is more than that, say so before anything else.
    - **Where to put files:** models in the `models` folder inside the main folder, and the unzipped `llama-server` build in the `llama.cpp` folder inside the main folder. Both are quoted, and shown as PowerShell commands the user can copy. The next scan looks in both folders, so `/setup` finds what the user installed.
 
 3. Write each command as a separate line that can be copied on its own. Do not join commands with `&&` in the printed text, because a user on an older PowerShell may not have it.
@@ -848,8 +953,9 @@ if (!config.SetupCompleted)
         Console.WriteLine("Setup cancelled. Nothing was saved.");
         return;
     }
-    config = result;
+    config = result.Config;
     ConfigStore.Save(config);
+    ScanStore.Save(result.Scan);                       // the earlier scan for the next setup (Exercise 4, step 6)
     // Console.WriteLine(EndpointCheck.FormatTable(await EndpointCheck.CheckAllAsync(http, config)));   // Exercise 8
 }
 
@@ -860,29 +966,43 @@ if (workingFolder is null)
 }
 ```
 
-Read this carefully. `RunAsync` takes the current config, not defaults, so a re-run starts from the user's existing answers. Inside `RunAsync`, the order is the one in README section 4: scan, show, verify, ask, suggest. Start `Features/FirstRun/SetupWizard.cs` from this shell:
+Read this carefully. `RunAsync` takes the current config, not defaults, so a re-run starts from the user's existing answers. Inside `RunAsync`, the order is the one in README section 4: earlier scan, scan, show, verify, ask, check the main folder, suggest. Start `Features/FirstRun/SetupWizard.cs` from this shell:
 
 ```csharp
 using LocalAgent.Shared.Config;
 
 namespace LocalAgent.Features.FirstRun;
 
+// What a completed setup gives back. The caller saves both files.
+public record SetupResult(AppConfig Config, LastScan Scan);
+
 public static class SetupWizard
 {
-    // Returns the new config, or null if the user cancels. The caller saves; this method writes
+    // Returns the result, or null if the user cancels. The caller saves; this method writes
     // nothing except a downloaded model, and that only after its own yes.
-    public static Task<AppConfig?> RunAsync(AppConfig current)
+    public static Task<SetupResult?> RunAsync(AppConfig current)
     {
-        // 1. MachineScanner.Scan(current.MainFolder)        Exercise 2, Part C
-        // 2. ScanReviewScreen.Review(...)                  Exercise 2, Part E. null: return null
-        // 3. InstalledPrompt.Ask(...)                      Exercise 2, Part F. null: return null
-        // 4. Ask purpose, patience, and main folder        current value in brackets (step 4)
-        // 5. ModelSuggester.Suggest(...)                   Exercise 3
-        // 6. InstallGuide.Build(...)                       Exercise 5. A found model that fits is chosen here
-        // 7. Offer the download, GuardedDownload.RunAsync  Exercise 6. Only if no found model was chosen
-        // 8. Return current with the new values: the verified RAM and VRAM, LlamaServerPath,
-        //    ChatModelFile (the chosen or downloaded file, or null), UserSetValues from steps 2
-        //    and 3, and SetupCompleted = true
+        // 1. ScanStore.Load()                              Exercise 4, step 6. Print its warning, if any.
+        //    Found: print "Earlier scan from <date>, main folder <folder>."
+        // 2. The main folder the scan may use. The first that exists:
+        //    current.MainFolder if current.SetupCompleted; else the earlier scan's MainFolder; else null.
+        //    Never AppConfig.Defaults.MainFolder (README section 5.13).
+        // 3. MachineScanner.Scan(knownFolder, Console.WriteLine)   Exercise 2, Part C
+        // 4. ScanRows.CarryOver(scan, earlier)             Exercise 2, Part E
+        // 5. ScanReviewScreen.Review(...)                  Exercise 2, Part E. null: return null
+        // 6. InstalledPrompt.Ask(..., knownFolder, ...)    Exercise 2, Part F. null: return null
+        // 7. Ask purpose, patience, and main folder        current value in brackets (step 4).
+        //    The main folder's default: knownFolder, else current.MainFolder. Show its drive's free
+        //    space with MachineScanner.FreeDiskGbFor.
+        // 8. If the chosen main folder is not knownFolder: MachineScanner.CheckMainFolder, and print
+        //    each line of Added. No full scan.
+        // 9. ModelSuggester.Suggest(...)                   Exercise 3
+        // 10. InstallGuide.Build(...)                      Exercise 5. A found model that fits is chosen here
+        // 11. Offer the download, GuardedDownload.RunAsync Exercise 6. Only if no found model was chosen
+        // 12. Return the config: current with the new values (the verified RAM and VRAM,
+        //     LlamaServerPath, ChatModelFile, the chosen or downloaded file or null, UserSetValues
+        //     from steps 5 and 6, SetupCompleted = true), and a LastScan with today's date,
+        //     the chosen main folder, the reviewed facts, and the same UserSetValues.
         throw new NotImplementedException(); // students write this
     }
 }
@@ -1005,12 +1125,12 @@ Start the two commands from these shells:
 // Features/FirstRun/SetupCommand.cs
 namespace LocalAgent.Features.FirstRun;
 
-public sealed class SetupCommand(Func<AppConfig> currentConfig, Action<AppConfig> save) : ISlashCommand
+public sealed class SetupCommand(Func<AppConfig> currentConfig, Action<SetupResult> save) : ISlashCommand
 {
     public string Name => "setup";
     public string Description => "Scan the machine again, and review the setup answers.";
 
-    // SetupWizard.RunAsync(currentConfig()). Call save only when it returns a config (step 5).
+    // SetupWizard.RunAsync(currentConfig()). Call save only when it returns a result (step 5).
     public Task RunAsync(string arguments, CancellationToken cancellationToken)
         => throw new NotImplementedException(); // students write this
 }
@@ -1034,15 +1154,21 @@ public sealed class FolderCommand(string mainFolder, Action<string> startSession
 Register both in `Program.cs`, one line each:
 
 ```csharp
-commands.Register(new SetupCommand(() => config, updated => { config = updated; ConfigStore.Save(config); }));
+commands.Register(new SetupCommand(() => config, result =>
+{
+    config = result.Config;
+    ConfigStore.Save(config);
+    ScanStore.Save(result.Scan);
+}));
 commands.Register(new FolderCommand(config.MainFolder, folder => { /* end this session, start one in folder */ }));
 ```
 
 **Checkpoint:**
-- First start with no `settings.json`: the wizard runs, scans first, and the file is created with `SetupCompleted = true`. Then the working-folder question is asked.
+- First start with no `settings.json` and no `last-scan.json`: the wizard runs, scans with no main folder, and both files are created, `settings.json` with `SetupCompleted = true`. Then the working-folder question is asked.
+- Delete `settings.json` but keep `last-scan.json`, as a new install would: the wizard names the earlier scan, offers its main folder as the default, and uses a value you corrected last time, marked `(you)`.
 - Second start: the wizard does not run, but the working-folder question does. Enter keeps the last folder.
 - `/setup`: every question shows the current value, and Enter keeps it.
-- Cancelling halfway through `/setup` leaves `settings.json` exactly as it was. Compare the file's contents before and after.
+- Cancelling halfway through `/setup` leaves `settings.json` and `last-scan.json` exactly as they were. Compare the files' contents before and after.
 - Typing `C:\` at the working-folder question is refused, with a reason in one line, and the question is asked again.
 - `recent.json` holds the folder you last chose, and the next start offers it.
 
@@ -1135,6 +1261,12 @@ Work through this table. For each row, write what happened and whether it was co
 | A model outside every known folder | put a `.gguf` file in a folder of your own | the scan does not find it; typing its folder in Part F adds it, marked `you` |
 | Nothing installed | answer `none` to both questions in Part F | no error; the install guide keeps both steps, and the download is offered |
 | Ollama installed | a machine with Ollama's model folder | the wizard says Ollama was found, and lists none of its files |
+| First run, nothing known | no `settings.json`, no `last-scan.json` | `Scan` gets `null`; the agent's own folders are not in the "looked in" list; free space is shown for every drive |
+| New install of the app | delete `settings.json`, keep `last-scan.json` | the earlier scan is named, its main folder is the default, and a corrected value is used again, marked `(you)` |
+| Earlier main folder is gone | delete the folder that `last-scan.json` names | the wizard says the folder no longer exists, and scans with no main folder |
+| A broken earlier scan | write `not json` into `last-scan.json` | a warning, setup runs as a first run, and the file is still there afterwards |
+| An existing main folder chosen | answer the main-folder question with a folder whose `models` folder holds a model | `CheckMainFolder` adds it, the wizard prints what it added, and no full scan runs again |
+| Main folder on another drive | choose a main folder on a drive other than `C:` | the free space shown and used is that drive's |
 | A changed value in the verify step | type `16` at the RAM row | the suggestion uses 16, and `settings.json` stores 16 |
 | Working folder typed as `C:\` | type `C:\` at the working-folder question | refused with a reason, and the question is asked again |
 | Working folder is the main folder | type the main folder's path at the working-folder question | refused with a reason (section 3.8 of the README) |

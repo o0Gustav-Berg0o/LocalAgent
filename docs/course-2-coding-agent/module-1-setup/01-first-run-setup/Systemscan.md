@@ -18,30 +18,58 @@ namespace LocalAgent.Features.FirstRun
         // Converts bytes to gigabytes (1024 * 1024 * 1024 bytes).
         private const double Gb = 1024d * 1024d * 1024d;
 
-        // Calls one reader per field and assembles the result.
+        // The full scan. Calls one reader per fact and assembles the result.
         // Each reader records its outcome in "sources".
-        // mainFolder is the current config's main folder (on a first run, %USERPROFILE%\LocalAgent).
-        // The scan reads its drive, its models folder, and its llama.cpp folder.
-        public static MachineInfo Scan(string mainFolder)
+        //
+        // mainFolder is the main folder the wizard already knows: the saved one, or the one from
+        // the earlier scan. On a first run nobody has chosen one yet, so it is null. Never pass a
+        // default as if the user had chosen it (README section 5.13). With null, the agent's own
+        // models and llama.cpp folders are skipped; CheckMainFolder adds them after the question.
+        //
+        // progress gets one tick line per probe. The caller prints it, so this class never calls
+        // Console (README section 3.10, rule 3). The building blocks below do not report progress.
+        public static MachineInfo Scan(string? mainFolder, Action<string>? progress = null)
         {
             var sources = new Dictionary<string, string>();
 
+            // "[ok]" when a value was read, "[--]" when it was not, then the value and its source.
+            void Tick(string key, bool found, string text) =>
+                progress?.Invoke($"[{(found ? "ok" : "--")}] {text} ({sources.GetValueOrDefault(key, "no source")})");
+
             var osName = ReadOsName(sources);
+            Tick("osName", osName is not null, $"OS: {osName ?? "unknown"}");
+
             var cpuName = ReadCpuName(sources);
             var cpuCores = ReadCpuCores(sources);
+            Tick("cpuName", cpuName is not null, $"CPU: {cpuName ?? "unknown"}, {cpuCores} logical cores");
+
             var totalRamGb = ReadTotalRamGb(sources);
+            Tick("totalRamGb", totalRamGb is not null, $"RAM: {(totalRamGb is { } ram ? $"{ram:F0} GB" : "unknown")}");
 
             // Deconstructs the four values returned by ReadGpu.
             var (gpuName, vramGb, vramIsLowerBound, hasNvidiaSmi) = ReadGpu(sources);
+            Tick("gpu", gpuName is not null,
+                $"GPU: {gpuName ?? "none found"}, VRAM {(vramGb is { } vram ? $"{vram:F1} GB" : "unknown")}");
 
-            var freeDiskGb = ReadFreeDiskGb(mainFolder, sources);
+            // Every drive, because the main folder may not be chosen yet.
+            var freeDisk = FreeDiskByDrive(sources);
+            Tick("freeDiskGb", freeDisk.Count > 0,
+                $"free disk: {string.Join(", ", freeDisk.Select(d => $"{d.Key.TrimEnd('\\')} {d.Value:F0} GB"))}");
+
             var llamaServerPath = FindLlamaServer(mainFolder, sources);
+            Tick("llamaServerPath", llamaServerPath is not null, $"llama-server: {llamaServerPath ?? "not found"}");
+
             var portsInUse = ReadListeningPorts(sources);
-            var modelFiles = ReadModelFiles(mainFolder, sources);
+            Tick("portsInUse", true, $"ports in use: {portsInUse.Count}");
+
+            var modelFiles = FindModels(ModelFolders(mainFolder), sources);
+            Tick("modelFiles", modelFiles.Count > 0, $"model files: {modelFiles.Count}");
+
             var ollamaFolder = FindOllamaFolder(sources);
+            Tick("ollamaFolder", ollamaFolder is not null, $"Ollama: {(ollamaFolder is null ? "not found" : "found")}");
 
             return new MachineInfo(osName, cpuName, cpuCores, totalRamGb, gpuName, vramGb,
-                vramIsLowerBound, freeDiskGb, hasNvidiaSmi, llamaServerPath, portsInUse, modelFiles,
+                vramIsLowerBound, freeDisk, hasNvidiaSmi, llamaServerPath, portsInUse, modelFiles,
                 ollamaFolder, sources);
         }
 
@@ -228,60 +256,6 @@ namespace LocalAgent.Features.FirstRun
             }
         }
 
-        // ---------- Disk ----------
-
-        private static double? ReadFreeDiskGb(string mainFolder, Dictionary<string, string> sources)
-        {
-            try
-            {
-                // Finds the drive that holds the main folder, for example "D:\".
-                // Downloaded models go to its models folder, so this is the drive that must have room.
-                var drive = new DriveInfo(Path.GetPathRoot(mainFolder)!);
-
-                sources["freeDiskGb"] = "DriveInfo.AvailableFreeSpace";
-                return drive.AvailableFreeSpace / Gb;
-            }
-            catch (IOException ex)
-            {
-                // Thrown when the drive is not ready, or is missing.
-                sources["freeDiskGb"] = $"failed: {ex.Message}";
-                return null;
-            }
-        }
-
-        // ---------- llama-server ----------
-
-        // PATH first, then the main folder's llama.cpp folder, where the install guide tells the
-        // user to unzip it. Checks that the file exists. Never runs it (README section 3.4).
-        // Anywhere else, the user types the path in InstalledPrompt (Exercise 2, Part F).
-        private static string? FindLlamaServer(string mainFolder, Dictionary<string, string> sources)
-        {
-            // PATH is a list of folders separated by ';' on Windows.
-            var dirs = (Environment.GetEnvironmentVariable("PATH") ?? string.Empty)
-                .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
-
-            // The first folder that contains llama-server.exe, or null.
-            var onPath = dirs
-                .Select(d => Path.Combine(d.Trim('"'), "llama-server.exe"))
-                .FirstOrDefault(File.Exists);
-
-            if (onPath is not null)
-            {
-                sources["llamaServerPath"] = "PATH";
-                return onPath;
-            }
-
-            var inMainFolder = Path.Combine(mainFolder, "llama.cpp", "llama-server.exe");
-            if (File.Exists(inMainFolder))
-            {
-                sources["llamaServerPath"] = "main folder";
-                return inMainFolder;
-            }
-
-            sources["llamaServerPath"] = "not found on PATH or in the main folder";
-            return null;
-        }
-
         // ---------- Network ----------
 
         private static IReadOnlyList<int> ReadListeningPorts(Dictionary<string, string> sources)
@@ -306,13 +280,105 @@ namespace LocalAgent.Features.FirstRun
             }
         }
 
+        // ======================================================================
+        // Building blocks. Public, so the wizard and later lessons can ask one question
+        // without a full scan (README section 3.4): after the main-folder question, when
+        // the user types a folder, or in a later lesson. "sources" is optional for that
+        // reason: a caller that does not show sources passes nothing.
+        // ======================================================================
+
+        // ---------- Disk ----------
+
+        // Free GB per drive root ("C:\"), for every fixed drive that is ready.
+        // Every drive, because on a first run the main folder is not chosen yet (README section 5.13).
+        public static IReadOnlyDictionary<string, double> FreeDiskByDrive(IDictionary<string, string>? sources = null)
+        {
+            var free = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var drive in DriveInfo.GetDrives())
+            {
+                try
+                {
+                    // IsReady is false for an empty card reader or a disconnected drive.
+                    if (drive.DriveType == DriveType.Fixed && drive.IsReady)
+                        free[drive.Name] = drive.AvailableFreeSpace / Gb;
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // A drive that fails while it is read is left out. The others still count.
+                }
+            }
+
+            Note(sources, "freeDiskGb", free.Count == 0
+                ? "no fixed drive could be read"
+                : "DriveInfo.AvailableFreeSpace, per drive");
+            return free;
+        }
+
+        // The free GB on the drive that holds folder, from the scan's per-drive list.
+        // null if that drive was not read, for example a network drive.
+        // The comparison ignores case, because a list read back from JSON has lost its comparer.
+        public static double? FreeDiskGbFor(MachineInfo info, string folder)
+        {
+            var root = Path.GetPathRoot(Path.GetFullPath(folder));
+            if (root is null)
+                return null;
+
+            foreach (var (drive, gb) in info.FreeDiskGbByDrive)
+            {
+                if (string.Equals(drive, root, StringComparison.OrdinalIgnoreCase))
+                    return gb;
+            }
+
+            return null;
+        }
+
+        // ---------- llama-server ----------
+
+        // PATH first, then the main folder's llama.cpp folder when a main folder is known. That is
+        // where the install guide tells the user to unzip it. Checks that the file exists. Never
+        // runs it (README section 3.4). Anywhere else, the user types the path in InstalledPrompt.
+        public static string? FindLlamaServer(string? mainFolder, IDictionary<string, string>? sources = null)
+        {
+            // PATH is a list of folders separated by ';' on Windows.
+            var dirs = (Environment.GetEnvironmentVariable("PATH") ?? string.Empty)
+                .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
+
+            // The first folder that contains llama-server.exe, or null.
+            var onPath = dirs
+                .Select(d => Path.Combine(d.Trim('"'), "llama-server.exe"))
+                .FirstOrDefault(File.Exists);
+
+            if (onPath is not null)
+            {
+                Note(sources, "llamaServerPath", "PATH");
+                return onPath;
+            }
+
+            if (mainFolder is not null && File.Exists(LlamaServerIn(mainFolder)))
+            {
+                Note(sources, "llamaServerPath", "main folder");
+                return LlamaServerIn(mainFolder);
+            }
+
+            Note(sources, "llamaServerPath", mainFolder is null
+                ? "not found on PATH"
+                : "not found on PATH or in the main folder");
+            return null;
+        }
+
+        // Where the install guide tells the user to unzip llama-server.
+        private static string LlamaServerIn(string mainFolder) =>
+            Path.Combine(mainFolder, "llama.cpp", "llama-server.exe");
+
         // ---------- Model files ----------
 
         // The known model folders from README section 3.4, as (source name, folder), in the
-        // order of that table. A variable that is not set is left out, and so is a folder
-        // already in the list. The folders do not have to exist: ReadModelFiles skips the
-        // missing ones. Public, because InstalledPrompt lists them when nothing was found.
-        public static IReadOnlyList<(string Source, string Folder)> ModelFolders(string mainFolder)
+        // order of that table. The agent's own models folder only when a main folder is known.
+        // A variable that is not set is left out, and so is a folder already in the list.
+        // The folders do not have to exist: FindModels skips the missing ones.
+        // InstalledPrompt lists them when nothing was found.
+        public static IReadOnlyList<(string Source, string Folder)> ModelFolders(string? mainFolder)
         {
             var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
@@ -320,7 +386,7 @@ namespace LocalAgent.Features.FirstRun
 
             var candidates = new (string Source, string? Folder)[]
             {
-                ("this agent", Path.Combine(mainFolder, "models")),
+                ("this agent", mainFolder is null ? null : Path.Combine(mainFolder, "models")),
                 // llama-server -hf downloads. Newer builds use the Hugging Face cache,
                 // older builds their own folder. LLAMA_CACHE overrides both.
                 ("llama.cpp", Env("LLAMA_CACHE")),
@@ -349,12 +415,18 @@ namespace LocalAgent.Features.FirstRun
             return folders;
         }
 
-        // Every *.gguf file in each known folder that exists, including its subfolders.
+        // Every *.gguf file in each of these folders that exists, including its subfolders.
+        // The scan passes ModelFolders(...). ScanRows.Apply passes one folder the user typed,
+        // with source "you". CheckMainFolder passes the main folder's models folder.
         // FoundModel is defined next to MachineInfo (Exercise 2, Part B).
-        private static IReadOnlyList<FoundModel> ReadModelFiles(string mainFolder, Dictionary<string, string> sources)
+        public static IReadOnlyList<FoundModel> FindModels(
+            IEnumerable<(string Source, string Folder)> folders, IDictionary<string, string>? sources = null)
         {
             var found = new List<FoundModel>();
             var searched = new List<string>();
+
+            // Two folder names can lead to the same file, so each file is listed once.
+            var seenFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             // Search subfolders, and skip a subfolder that cannot be read instead of stopping.
             // AttributesToSkip = 0 also lists hidden files; the default skips them.
@@ -366,7 +438,7 @@ namespace LocalAgent.Features.FirstRun
                 AttributesToSkip = 0
             };
 
-            foreach (var (source, folder) in ModelFolders(mainFolder))
+            foreach (var (source, folder) in folders)
             {
                 // A missing folder is normal: that tool is not installed.
                 // Directory.EnumerateFiles on a missing folder throws, so check first. Do not
@@ -385,7 +457,8 @@ namespace LocalAgent.Features.FirstRun
                         if (Path.GetFileName(path).StartsWith("mmproj", StringComparison.OrdinalIgnoreCase))
                             continue;
 
-                        found.Add(new FoundModel(path, ReadRealSizeGb(path), source));
+                        if (seenFiles.Add(path))
+                            found.Add(new FoundModel(path, RealSizeGb(path), source));
                     }
 
                     searched.Add(folder);
@@ -393,20 +466,21 @@ namespace LocalAgent.Features.FirstRun
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                 {
                     // One unreadable folder does not stop the others.
-                    sources[$"modelFiles {folder}"] = $"failed: {ex.Message}";
+                    Note(sources, $"modelFiles {folder}", $"failed: {ex.Message}");
                 }
             }
 
-            sources["modelFiles"] = searched.Count == 0
+            Note(sources, "modelFiles", searched.Count == 0
                 ? "no known model folder exists"
-                : $"searched {string.Join(", ", searched)}";
+                : $"searched {string.Join(", ", searched)}");
             return found;
         }
 
         // The size of the real file, in GB, or null if it cannot be read.
         // In the Hugging Face cache, each .gguf file is a link into a "blobs" folder, and the
         // link itself has a length of 0 (README section 5.12). So follow the link first.
-        private static double? ReadRealSizeGb(string path)
+        // Public, because ScanRows.Apply needs it for a single file the user typed.
+        public static double? RealSizeGb(string path)
         {
             try
             {
@@ -425,21 +499,67 @@ namespace LocalAgent.Features.FirstRun
             }
         }
 
+        // ---------- Ollama ----------
+
         // Ollama stores its models as blobs without model names, so they are not listed
         // (README section 3.4). Only the folder is reported, so the wizard can say why.
-        private static string? FindOllamaFolder(Dictionary<string, string> sources)
+        public static string? FindOllamaFolder(IDictionary<string, string>? sources = null)
         {
             var folder = Env("OLLAMA_MODELS")
                 ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ollama", "models");
 
             if (Directory.Exists(folder))
             {
-                sources["ollamaFolder"] = "found; its models are not listed";
+                Note(sources, "ollamaFolder", "found; its models are not listed");
                 return folder;
             }
 
-            sources["ollamaFolder"] = "not found";
+            Note(sources, "ollamaFolder", "not found");
             return null;
+        }
+
+        // ---------- After the main-folder question ----------
+
+        // Checks only the chosen main folder, without a full scan: its models folder, and its
+        // llama.cpp folder when no llama-server is known yet. Returns the facts with what it found
+        // added, and one line per addition for the wizard to print. A model already in the list
+        // is not added again, so calling it twice adds nothing the second time.
+        public static (MachineInfo Info, IReadOnlyList<string> Added) CheckMainFolder(MachineInfo info, string mainFolder)
+        {
+            var added = new List<string>();
+
+            var known = info.ModelFiles.Select(m => m.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var newModels = FindModels([("this agent", Path.Combine(mainFolder, "models"))])
+                .Where(m => !known.Contains(m.Path))
+                .ToList();
+
+            foreach (var model in newModels)
+                added.Add($"model {Path.GetFileName(model.Path)}, found in the main folder");
+
+            var llamaServerPath = info.LlamaServerPath;
+            if (llamaServerPath is null && File.Exists(LlamaServerIn(mainFolder)))
+            {
+                llamaServerPath = LlamaServerIn(mainFolder);
+                added.Add($"llama-server, found in {Path.GetDirectoryName(llamaServerPath)}");
+            }
+
+            var updated = info with
+            {
+                ModelFiles = [.. info.ModelFiles, .. newModels],
+                LlamaServerPath = llamaServerPath
+            };
+
+            return (updated, added);
+        }
+
+        // ---------- Helpers ----------
+
+        // Records a source when the caller wants sources. A building block called on its own
+        // gets null and records nothing.
+        private static void Note(IDictionary<string, string>? sources, string key, string value)
+        {
+            if (sources is not null)
+                sources[key] = value;
         }
 
         // An environment variable's value, or null if it is not set or is empty.

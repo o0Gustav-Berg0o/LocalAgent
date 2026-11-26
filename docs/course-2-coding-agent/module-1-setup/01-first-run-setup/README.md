@@ -94,7 +94,7 @@ The scan must not change anything on the machine. This is a deliberate rule, and
 
 - Use commands that **read** information (`Get-CimInstance`, `nvidia-smi --query`, `Get-PSDrive`, `where.exe`, `Get-NetTCPConnection`). Do not install drivers, do not run tools with side effects.
 - Do not require administrator rights. If a fact needs admin rights to read, say so and skip it.
-- Do not send the scan results anywhere. They stay on the machine, in the config file the user can read and delete.
+- Do not send the scan results anywhere. They stay on the machine, in the config file and the earlier-scan file (section 3.9), both of which the user can read and delete.
 
 **What the scan covers.** The scan runs by itself, with no questions. It probes the machine one fact at a time, and each probe prints a tick when it finishes.
 
@@ -105,8 +105,8 @@ The scan must not change anything on the machine. This is a deliberate rule, and
 | Total RAM | `Win32_ComputerSystem` | the model suggestion |
 | GPU name and driver | `Win32_VideoController`, `nvidia-smi` | the build named in the install guide |
 | VRAM | `nvidia-smi`, or `AdapterRAM` as a lower bound | the model suggestion |
-| Free and total disk, per drive | `Get-PSDrive` | checking that a model fits on the main folder's drive |
-| `llama-server` | `where.exe llama-server`, then the main folder's `llama.cpp` folder | skipping an install step that is not needed |
+| Free and total disk, per drive | `Get-PSDrive` | showing free space at the main-folder question, and checking that a model fits on the main folder's drive |
+| `llama-server` | `where.exe llama-server`, then the main folder's `llama.cpp` folder once a main folder is known | skipping an install step that is not needed |
 | Model files (`*.gguf`) | the known model folders (table below) | offering a model the user already has |
 | Endpoint ports 8080 and 8081 | `Get-NetTCPConnection -State Listen` | reporting a server that already runs |
 
@@ -114,7 +114,7 @@ The scan must not change anything on the machine. This is a deliberate rule, and
 
 | Source | Folders checked | What is there |
 |---|---|---|
-| This agent | the main folder's `models` folder | models the wizard downloaded |
+| This agent | the main folder's `models` folder, once a main folder is known | models the wizard downloaded |
 | `llama.cpp` downloads (`llama-server -hf`) | `LLAMA_CACHE`, `HF_HUB_CACHE` and `HF_HOME\hub` if they are set; `%USERPROFILE%\.cache\huggingface\hub`; `%LOCALAPPDATA%\llama.cpp` (older builds) | `.gguf` files in `snapshots` subfolders, stored as links (section 5.12) |
 | LM Studio | `%USERPROFILE%\.lmstudio\models`; `%USERPROFILE%\.cache\lm-studio\models` (older versions) | `.gguf` files in publisher and model subfolders |
 | Ollama | `OLLAMA_MODELS` if it is set, otherwise `%USERPROFILE%\.ollama\models` | detected, not listed: Ollama stores models without file names |
@@ -122,6 +122,10 @@ The scan must not change anything on the machine. This is a deliberate rule, and
 A folder that does not exist is skipped. The scan searches each folder and its subfolders, leaves out `mmproj-*` files (vision add-ons, not models), and records each file's path, real size, and source. Anything outside these folders the user types in the next step (section 3.9).
 
 **Important:** these folders belong to other programs, and they change between versions. Before you ship a version of this wizard, check them on a current install of each tool.
+
+**No main folder on a first run.** The scan runs before any question, so on a first run nobody has chosen a main folder yet. The scan must not invent one. It takes the main folder it knows (the saved one, or the one from an earlier scan, section 3.9), or none. With none, it skips the agent's own `models` and `llama.cpp` folders. After the main-folder question, the wizard checks only the chosen folder, and adds anything it finds there. Free disk is read for every drive, so it is already known for whichever drive the user picks (section 5.13).
+
+**Small methods, one scan.** The full scan is built from public methods, one per question: where is `llama-server`, which model folders are known, which models are in these folders, how much space is free per drive, is Ollama installed. The wizard and later lessons call one of them on its own, without a full scan. For example: after the main-folder question, or when the user types a folder in the verify step.
 
 Four rules for the scan:
 
@@ -140,6 +144,7 @@ The wizard writes its answers to one file, for example `settings.json`, in the a
 - **Validated on read.** A value that is missing or invalid gets a clear message and a default, not a crash.
 - **Holds the main folder, not the working folder.** The working folder is chosen at each start (section 3.8), so it never goes in this file. The verified hardware values (`ramGb`, `vramGb`) do go in, because the suggestion depends on them. `userSetValues` lists the ones the user corrected.
 - **Holds what is installed.** `llamaServerPath` and `chatModelFile` hold the paths the user confirmed, or `null` when the user said nothing is installed.
+- **Is not the earlier scan.** The verified scan is kept in a second file, in `%LOCALAPPDATA%\LocalAgent`, because the app's folder is replaced when the app is installed again (section 3.9).
 
 An example of what the file might hold (values are illustrative):
 
@@ -186,7 +191,7 @@ If the scan found `llama-server` or a matching model file, the guide says so and
 
 Setup asks for one folder. The working folder is chosen at every start. The two are different, and the lesson keeps them apart on purpose.
 
-- **Main folder.** The agent's own space. It holds the files the agent makes for itself: sessions, logs, downloaded models in a `models` subfolder, `llama-server` in a `llama.cpp` subfolder if the user installs it there, and a short list of recently used working folders (`recent.json`). The user chooses it once, in setup. The default is `%USERPROFILE%\LocalAgent`.
+- **Main folder.** The agent's own space. It holds the files the agent makes for itself: sessions, logs, downloaded models in a `models` subfolder, `llama-server` in a `llama.cpp` subfolder if the user installs it there, and a short list of recently used working folders (`recent.json`). The user chooses it once, in setup. The default is the main folder from an earlier scan, if it still exists (section 3.9), otherwise `%USERPROFILE%\LocalAgent`. The question shows the free space on the folder's drive.
 - **Working folder.** The project the agent reads and edits. This is the project root from Module 2, Lesson 5. The user chooses it at every start. Enter keeps the last one used. It is never stored in `settings.json`, because it changes with each project.
 
 Why keep them apart:
@@ -222,6 +227,12 @@ The scan is an estimate of the machine. Some values are wrong (section 5.1), and
 - A value the user corrected is listed in `userSetValues` in the config. A later rescan (`/setup --rescan`, a stretch task in the exercises) asks before it replaces that value.
 - Nothing is saved until the wizard reaches its end. Cancelling in the middle leaves the config as it was, the same rule as `/setup`.
 
+**An earlier scan.** At the end of a completed setup, the wizard also saves the verified scan to `%LOCALAPPDATA%\LocalAgent\last-scan.json`: the date, the main folder the user confirmed, the facts after the user's corrections, and `userSetValues`. It reads that file at the start of every setup run.
+
+- **Why a second file, and why there.** `settings.json` sits next to the executable, so it is gone when the app is installed again in a new folder. The main folder cannot be found without knowing where it is. `%LOCALAPPDATA%` is the fixed place Windows gives each user for app data on one machine, and a hardware scan belongs to one machine. It is the local folder, not the roaming one, so the file never follows the user to another PC.
+- **What it is used for.** Its main folder, if the folder still exists, is the folder the scan checks and the default answer to the main-folder question. A real value, not a guess. A value the user corrected last time is used again instead of the new scan's value, listed in the changed rows, and shown before the table, so the user can change it back.
+- **What it is not.** It holds no answer the user has not seen, and no secret. A file that cannot be read gives a warning, setup runs as a first run, and the file is left on disk. A cancelled setup leaves it unchanged.
+
 ### 3.10 Where the code goes
 
 From this lesson on, the app is organised by feature, not by kind of code. Each feature is a folder under `Features/`, called a slice, and most lessons add one. A lesson's code sits in one place, so you can read it, review it, and undo it as one piece. Exercise 0 moves the code from the RAG course into this layout first, so the whole app has one shape.
@@ -231,7 +242,7 @@ LocalAgent/                 the console app from the RAG course
   Agent/                    the loop from the RAG course. It wires the slices together.
   Features/
     Notes/  Utility/  Eval/ from the RAG course, moved in Exercise 0
-    FirstRun/               this lesson: scan, verify screen, suggestion, install guide, wizard
+    FirstRun/               this lesson: scan, verify screen, earlier scan, suggestion, install guide, wizard
     Workspace/              this lesson: the working folder and the recent folders
     Settings/  ReadFiles/  Permissions/  FileChanges/  Shell/  Context/  ProjectMemory/
     Sessions/  Cowork/  Handoff/  Skills/  CustomCommands/  Hooks/  Subagents/  Mcp/  Fetch/
@@ -262,8 +273,13 @@ first start
   no
   │
   ▼
-scan the machine (automatic, read-only, no questions yet)
+read the earlier scan, if there is one (%LOCALAPPDATA%\LocalAgent\last-scan.json)
   │
+  ▼
+scan the machine (automatic, read-only, no questions yet)
+  │   main folder: the saved one, else the earlier scan's if it still exists, else none
+  │   values the user corrected in the earlier scan are used again
+  ▼
   ▼
 show the scan: each value with its source, one tick per probe
   │
@@ -274,7 +290,10 @@ verify or change: Enter keeps a value, typing replaces it
 ask what is installed: llama-server, then models (Enter keeps, a path adds, none = not installed)
   │
   ▼
-ask what the machine cannot answer (purpose, patience, main folder)
+ask what the machine cannot answer (purpose, patience, main folder with its free space)
+  │
+  ▼
+check the chosen main folder: its models and llama.cpp folders (no full scan)
   │
   ▼
 suggest a model (rule table, with the estimate warning)
@@ -292,7 +311,7 @@ show source, name, size, destination ── confirm? ── no ──► cancel,
 download to temp name, verify, rename
   │
   ▼
-write settings.json, setupCompleted = true
+write settings.json (setupCompleted = true) and last-scan.json
   │
   ▼
 test both endpoints, report result
@@ -333,6 +352,8 @@ These are the mistakes that cost people hours. Read them before the lab.
 
 **5.12 A model file that is 0 bytes.** The Hugging Face cache, where `llama-server -hf` downloads go, stores each `.gguf` file as a link into a `blobs` folder. The link itself is 0 bytes, so a plain size check reports every model as empty, and a size rule would suggest a download the user does not need. Follow the link before reading the size (`FileInfo.ResolveLinkTarget(true)` in .NET). The same folder can hold an `mmproj-*.gguf` file next to a model. It is a vision add-on, not a model, so the scan leaves it out.
 
+**5.13 A main folder the scan made up.** On a first run, the easy code passes the default main folder to the scan as if the user had chosen it. Two things then go wrong. The free space is measured on the default's drive, and the user picks another drive. Or the user picks an existing folder from an earlier install, and its models are never looked at. The scan takes `null` when no main folder is known, reads free space for every drive, and the wizard checks the chosen folder after the question (section 3.4).
+
 ---
 
 ## 6. Glossary
@@ -348,6 +369,7 @@ These are the mistakes that cost people hours. Read them before the lab.
 - **Main folder:** the agent's own folder for sessions, logs, and models. Chosen once, in setup.
 - **Working folder:** the project the agent reads and edits. Chosen at every start.
 - **Verify step:** the screen where the user checks each scanned value and changes any that are wrong.
+- **Earlier scan:** the verified scan from the last completed setup, kept in `%LOCALAPPDATA%\LocalAgent\last-scan.json`, so a new install can find the main folder and the user's corrections.
 
 ---
 
@@ -357,6 +379,7 @@ These are the mistakes that cost people hours. Read them before the lab.
 - A working-folder question at every start, and `/folder` during a session. The main folder stays apart from it.
 - A download step that only runs after an explicit yes, and only to a temporary file in the `models` folder.
 - A config file that stores non-secret answers, the main folder, and the verified hardware values, and is read on every start.
+- An earlier-scan file in `%LOCALAPPDATA%`, which lets a new install find the main folder and the user's corrections.
 - A start-up check that skips setup when the config says it is complete.
 - A short note for the course: what the wizard can and cannot know about a machine.
 
@@ -373,5 +396,6 @@ These are the mistakes that cost people hours. Read them before the lab.
 - Files go to a temporary name first, and are renamed only when complete.
 - The config file holds non-secret values, the main folder, and the verified hardware values. It carries a version number.
 - The main folder is the agent's own space, set once. The working folder is the project, chosen at each start.
+- The scan never invents a main folder. It uses the saved one or the earlier scan's, or none, and the wizard checks the chosen folder after the question.
 
 Continue to [exercises.md](exercises.md) for the lab. It is long on purpose: work through it in order, and do not skip the Observe and Discuss sections. They are where the lesson's reasoning is tested.

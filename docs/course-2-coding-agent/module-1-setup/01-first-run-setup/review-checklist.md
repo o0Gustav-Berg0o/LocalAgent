@@ -16,7 +16,9 @@ Use this list before you mark the lesson complete. Each item is something you ca
 
 ## Scanning
 
-- [ ] The scan runs by itself, before the first question, and prints one tick line per probe.
+- [ ] The scan runs by itself, before the first question, and reports one tick line per probe through its `progress` callback. The scanner itself never calls `Console`.
+- [ ] On a first run, the scan gets `null` as its main folder, never the default. The agent's own folders are then not checked, and free space is read for every drive.
+- [ ] Each building block (`FindLlamaServer`, `ModelFolders`, `FindModels`, `FreeDiskByDrive`, `FindOllamaFolder`, `CheckMainFolder`) can be called on its own, and at least one caller does that without a full scan.
 - [ ] The scan uses only read-only commands and does not need administrator rights.
 - [ ] The scan makes no network call, runs no program it finds, and checks only the known model folders from README section 3.4 for model files, never the whole disk.
 - [ ] I can say, for each known model folder, which tool an end user would have used to fill it.
@@ -40,6 +42,15 @@ Use this list before you mark the lesson complete. Each item is something you ca
 ## Folders
 
 - [ ] The main folder is chosen once, in setup, and holds sessions, logs, the `models` folder, and `recent.json`.
+- [ ] The main-folder question shows the free space on the folder's drive. Its default is the earlier scan's main folder if that still exists.
+- [ ] Choosing an existing main folder adds the models and `llama-server` in it, without a full scan, and the wizard says what it added.
+
+## Earlier scan
+
+- [ ] A completed setup writes `%LOCALAPPDATA%\LocalAgent\last-scan.json`. A cancelled setup leaves it as it was.
+- [ ] With `settings.json` deleted and `last-scan.json` kept, the wizard names the earlier scan, offers its main folder, and uses the values I corrected last time, marked `(you)`.
+- [ ] A broken `last-scan.json` gives a warning and a first run, and the file is not deleted.
+- [ ] I can explain why the earlier scan is in local AppData, and not next to the executable or in the roaming folder.
 - [ ] The working folder is asked at every start, with Enter keeping the last one used.
 - [ ] The working folder is never stored in `settings.json`.
 - [ ] A drive root, the Windows folder, and the main folder are refused as a working folder, with a reason.
