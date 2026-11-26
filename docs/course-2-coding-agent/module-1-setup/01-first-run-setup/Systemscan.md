@@ -20,7 +20,9 @@ namespace LocalAgent.Features.FirstRun
 
         // Calls one reader per field and assembles the result.
         // Each reader records its outcome in "sources".
-        public static MachineInfo Scan(string modelDir)
+        // mainFolder is the current config's main folder (on a first run, %USERPROFILE%\LocalAgent).
+        // The scan reads its drive, its models folder, and its llama.cpp folder.
+        public static MachineInfo Scan(string mainFolder)
         {
             var sources = new Dictionary<string, string>();
 
@@ -32,13 +34,15 @@ namespace LocalAgent.Features.FirstRun
             // Deconstructs the four values returned by ReadGpu.
             var (gpuName, vramGb, vramIsLowerBound, hasNvidiaSmi) = ReadGpu(sources);
 
-            var freeDiskGb = ReadFreeDiskGb(modelDir, sources);
-            var llamaServerPath = FindLlamaServer(sources);
+            var freeDiskGb = ReadFreeDiskGb(mainFolder, sources);
+            var llamaServerPath = FindLlamaServer(mainFolder, sources);
             var portsInUse = ReadListeningPorts(sources);
-            var modelFiles = ReadModelFiles(modelDir, sources);
+            var modelFiles = ReadModelFiles(mainFolder, sources);
+            var ollamaFolder = FindOllamaFolder(sources);
 
             return new MachineInfo(osName, cpuName, cpuCores, totalRamGb, gpuName, vramGb,
-                vramIsLowerBound, freeDiskGb, hasNvidiaSmi, llamaServerPath, portsInUse, modelFiles, sources);
+                vramIsLowerBound, freeDiskGb, hasNvidiaSmi, llamaServerPath, portsInUse, modelFiles,
+                ollamaFolder, sources);
         }
 
         // ---------- Operating system ----------
@@ -146,10 +150,19 @@ namespace LocalAgent.Features.FirstRun
                     return null;
                 }
 
-                string output = process.StandardOutput.ReadToEnd();
+                // Start reading before waiting. ReadToEnd on its own blocks until the program
+                // exits, so a nvidia-smi that hangs would hang the scan before the timeout applies.
+                var outputTask = process.StandardOutput.ReadToEndAsync();
 
                 // Wait at most 5 seconds so the scan cannot hang.
-                process.WaitForExit(5000);
+                if (!process.WaitForExit(5000))
+                {
+                    process.Kill(entireProcessTree: true);
+                    sources["gpu"] = "nvidia-smi timed out after 5 seconds";
+                    return null;
+                }
+
+                string output = outputTask.GetAwaiter().GetResult();
 
                 if (process.ExitCode != 0)
                 {
@@ -160,10 +173,17 @@ namespace LocalAgent.Features.FirstRun
                 // Output for one GPU: "NVIDIA GeForce RTX 4090, 24564"
                 // Only the first line is used, so this reads the first GPU.
                 var parts = output.Split('\n')[0].Split(',');
-                var name = parts[0].Trim();
 
+                // Parse, do not trust: some drivers print "[Not Supported]" or "[N/A]".
                 // nvidia-smi reports MiB. InvariantCulture keeps parsing independent of locale.
-                var mib = double.Parse(parts[1].Trim(), CultureInfo.InvariantCulture);
+                if (parts.Length < 2 ||
+                    !double.TryParse(parts[1].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var mib))
+                {
+                    sources["gpu"] = $"nvidia-smi output not understood: {output.Trim()}";
+                    return null;
+                }
+
+                var name = parts[0].Trim();
 
                 sources["gpu"] = "nvidia-smi";
                 return (name, mib / 1024d);
@@ -210,12 +230,13 @@ namespace LocalAgent.Features.FirstRun
 
         // ---------- Disk ----------
 
-        private static double? ReadFreeDiskGb(string modelDir, Dictionary<string, string> sources)
+        private static double? ReadFreeDiskGb(string mainFolder, Dictionary<string, string> sources)
         {
             try
             {
-                // Finds the drive that holds the model folder, for example "D:\".
-                var drive = new DriveInfo(Path.GetPathRoot(modelDir)!);
+                // Finds the drive that holds the main folder, for example "D:\".
+                // Downloaded models go to its models folder, so this is the drive that must have room.
+                var drive = new DriveInfo(Path.GetPathRoot(mainFolder)!);
 
                 sources["freeDiskGb"] = "DriveInfo.AvailableFreeSpace";
                 return drive.AvailableFreeSpace / Gb;
@@ -230,19 +251,35 @@ namespace LocalAgent.Features.FirstRun
 
         // ---------- llama-server ----------
 
-        private static string? FindLlamaServer(Dictionary<string, string> sources)
+        // PATH first, then the main folder's llama.cpp folder, where the install guide tells the
+        // user to unzip it. Checks that the file exists. Never runs it (README section 3.4).
+        // Anywhere else, the user types the path in InstalledPrompt (Exercise 2, Part F).
+        private static string? FindLlamaServer(string mainFolder, Dictionary<string, string> sources)
         {
             // PATH is a list of folders separated by ';' on Windows.
             var dirs = (Environment.GetEnvironmentVariable("PATH") ?? string.Empty)
                 .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
 
-            // Returns the first folder that contains llama-server.exe, or null.
-            var path = dirs
+            // The first folder that contains llama-server.exe, or null.
+            var onPath = dirs
                 .Select(d => Path.Combine(d.Trim('"'), "llama-server.exe"))
                 .FirstOrDefault(File.Exists);
 
-            sources["llamaServerPath"] = path is null ? "not found on PATH" : "searched PATH";
-            return path;
+            if (onPath is not null)
+            {
+                sources["llamaServerPath"] = "PATH";
+                return onPath;
+            }
+
+            var inMainFolder = Path.Combine(mainFolder, "llama.cpp", "llama-server.exe");
+            if (File.Exists(inMainFolder))
+            {
+                sources["llamaServerPath"] = "main folder";
+                return inMainFolder;
+            }
+
+            sources["llamaServerPath"] = "not found on PATH or in the main folder";
+            return null;
         }
 
         // ---------- Network ----------
@@ -259,34 +296,154 @@ namespace LocalAgent.Features.FirstRun
                     .OrderBy(p => p)
                     .ToList();
 
-                sources["portsInUser"] = "IPGlobalProperties.GetActiveTcpListeners";
+                sources["portsInUse"] = "IPGlobalProperties.GetActiveTcpListeners";
                 return ports;
             }
             catch (NetworkInformationException ex)
             {
-                sources["portsInUser"] = $"failed: {ex.Message}";
+                sources["portsInUse"] = $"failed: {ex.Message}";
                 return Array.Empty<int>();
             }
         }
 
         // ---------- Model files ----------
 
-        private static IReadOnlyList<string> ReadModelFiles(string modelDir, Dictionary<string, string> sources)
+        // The known model folders from README section 3.4, as (source name, folder), in the
+        // order of that table. A variable that is not set is left out, and so is a folder
+        // already in the list. The folders do not have to exist: ReadModelFiles skips the
+        // missing ones. Public, because InstalledPrompt lists them when nothing was found.
+        public static IReadOnlyList<(string Source, string Folder)> ModelFolders(string mainFolder)
+        {
+            var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var hfHome = Env("HF_HOME");
+
+            var candidates = new (string Source, string? Folder)[]
+            {
+                ("this agent", Path.Combine(mainFolder, "models")),
+                // llama-server -hf downloads. Newer builds use the Hugging Face cache,
+                // older builds their own folder. LLAMA_CACHE overrides both.
+                ("llama.cpp", Env("LLAMA_CACHE")),
+                ("llama.cpp", Env("HF_HUB_CACHE")),
+                ("llama.cpp", hfHome is null ? null : Path.Combine(hfHome, "hub")),
+                ("llama.cpp", Path.Combine(profile, ".cache", "huggingface", "hub")),
+                ("llama.cpp", Path.Combine(localAppData, "llama.cpp")),
+                // LM Studio: the current folder, then the one older versions used.
+                ("LM Studio", Path.Combine(profile, ".lmstudio", "models")),
+                ("LM Studio", Path.Combine(profile, ".cache", "lm-studio", "models")),
+            };
+
+            // Folder names on Windows ignore case, so "C:\Models" and "c:\models\" are one folder.
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var folders = new List<(string Source, string Folder)>();
+            foreach (var (source, folder) in candidates)
+            {
+                if (folder is null)
+                    continue;
+
+                var trimmed = folder.TrimEnd('\\', '/');
+                if (seen.Add(trimmed))
+                    folders.Add((source, trimmed));
+            }
+
+            return folders;
+        }
+
+        // Every *.gguf file in each known folder that exists, including its subfolders.
+        // FoundModel is defined next to MachineInfo (Exercise 2, Part B).
+        private static IReadOnlyList<FoundModel> ReadModelFiles(string mainFolder, Dictionary<string, string> sources)
+        {
+            var found = new List<FoundModel>();
+            var searched = new List<string>();
+
+            // Search subfolders, and skip a subfolder that cannot be read instead of stopping.
+            // AttributesToSkip = 0 also lists hidden files; the default skips them.
+            // The full name is needed: System.Management has an EnumerationOptions class too.
+            var options = new System.IO.EnumerationOptions
+            {
+                RecurseSubdirectories = true,
+                IgnoreInaccessible = true,
+                AttributesToSkip = 0
+            };
+
+            foreach (var (source, folder) in ModelFolders(mainFolder))
+            {
+                // A missing folder is normal: that tool is not installed.
+                // Directory.EnumerateFiles on a missing folder throws, so check first. Do not
+                // use Get-ChildItem -Recurse here: on a missing folder it searches the parent.
+                if (!Directory.Exists(folder))
+                    continue;
+
+                try
+                {
+                    // ToList() forces the lazy enumeration to run inside the try block.
+                    var paths = Directory.EnumerateFiles(folder, "*.gguf", options).ToList();
+
+                    foreach (var path in paths)
+                    {
+                        // mmproj files are vision add-ons for a model, not models (README section 5.12).
+                        if (Path.GetFileName(path).StartsWith("mmproj", StringComparison.OrdinalIgnoreCase))
+                            continue;
+
+                        found.Add(new FoundModel(path, ReadRealSizeGb(path), source));
+                    }
+
+                    searched.Add(folder);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // One unreadable folder does not stop the others.
+                    sources[$"modelFiles {folder}"] = $"failed: {ex.Message}";
+                }
+            }
+
+            sources["modelFiles"] = searched.Count == 0
+                ? "no known model folder exists"
+                : $"searched {string.Join(", ", searched)}";
+            return found;
+        }
+
+        // The size of the real file, in GB, or null if it cannot be read.
+        // In the Hugging Face cache, each .gguf file is a link into a "blobs" folder, and the
+        // link itself has a length of 0 (README section 5.12). So follow the link first.
+        private static double? ReadRealSizeGb(string path)
         {
             try
             {
-                // ToList() forces the lazy enumeration to run inside the try block.
-                var files = Directory.EnumerateFiles(modelDir, "*.gguf").ToList();
+                var file = new FileInfo(path);
 
-                sources["modelFiles"] = "Directory.EnumerateFiles *.gguf";
-                return files;
+                // ResolveLinkTarget returns null when the file is not a link.
+                // returnFinalTarget: true follows a chain of links to the real file.
+                var target = file.ResolveLinkTarget(returnFinalTarget: true) as FileInfo ?? file;
+
+                return target.Exists ? target.Length / Gb : null;
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                // Covers a missing folder and a folder without permission.
-                sources["modelFiles"] = $"failed: {ex.Message}";
-                return Array.Empty<string>();
+                // A broken link, or a target the app may not read.
+                return null;
             }
         }
+
+        // Ollama stores its models as blobs without model names, so they are not listed
+        // (README section 3.4). Only the folder is reported, so the wizard can say why.
+        private static string? FindOllamaFolder(Dictionary<string, string> sources)
+        {
+            var folder = Env("OLLAMA_MODELS")
+                ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ollama", "models");
+
+            if (Directory.Exists(folder))
+            {
+                sources["ollamaFolder"] = "found; its models are not listed";
+                return folder;
+            }
+
+            sources["ollamaFolder"] = "not found";
+            return null;
+        }
+
+        // An environment variable's value, or null if it is not set or is empty.
+        private static string? Env(string name) =>
+            Environment.GetEnvironmentVariable(name) is { Length: > 0 } value ? value : null;
     }
 }
